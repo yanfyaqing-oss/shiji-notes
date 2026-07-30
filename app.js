@@ -54,6 +54,32 @@ function currentLearningWeek(date = new Date()) {
 function isRecurringPlan(note) { return Boolean(note.recurrence); }
 function isBuiltInLearningPlan(note) { return ['learning-plan-u3d','learning-plan-spine'].includes(note.id); }
 function completedTaskKeys(note) { return Array.isArray(note.completedTasks) ? note.completedTasks : []; }
+function ensureBuiltInLearningPlans() {
+  const now = new Date().toISOString();
+  const templates = [
+    {
+      id:'learning-plan-u3d', title:'40周 U3D 学习计划', nextAction:'按40周路线继续完成下一项 U3D 训练',
+      recurrence:'unity_days', planTime:'12:00', tags:['U3D','学习计划','40周计划']
+    },
+    {
+      id:'learning-plan-spine', title:'40周 Spine 学习计划', nextAction:'按40周路线继续完成下一项 Spine 训练',
+      recurrence:'spine_weekend', planTime:'20:30', tags:['Spine','学习计划','40周计划']
+    }
+  ];
+  const restored = [];
+  for (const template of templates) {
+    if (state.notes.some(note => note.id === template.id)) continue;
+    const note = {
+      ...template, category:'学习', status:'open', problem:'', process:'', result:'', learningData:{},
+      photoCount:0, pinned:false, actionPeriod:'week', dueDate:'', actionDone:false,
+      lastCompletedDate:'', completedTasks:[], createdAt:now, updatedAt:now
+    };
+    state.notes.push(note);
+    restored.push(note);
+  }
+  if (restored.length) save();
+  return restored;
+}
 function planRouteDays(note) { return note.id === 'learning-plan-u3d' ? ['周二','周四'] : ['周六','周日']; }
 function planTaskKey(note, weekNumber, taskIndex) { return `${note.id === 'learning-plan-u3d' ? 'u3d' : 'spine'}-w${weekNumber}-t${taskIndex + 1}`; }
 function learningPlanTaskInfo(note, date = new Date()) {
@@ -999,7 +1025,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=18').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=19').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {
@@ -1008,4 +1034,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 
 $('#todayText').textContent = new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
-load(); separateMasterPlanLearningEntries(); render();
+load(); ensureBuiltInLearningPlans(); separateMasterPlanLearningEntries(); render();

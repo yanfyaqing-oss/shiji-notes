@@ -188,7 +188,7 @@ function weeklyGroup(note) {
 
 function openWeeklySummary() {
   const weekStart = startOfWeek();
-  const notes = state.notes.filter(note => new Date(note.updatedAt || note.createdAt) >= weekStart).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const notes = state.notes.filter(note => !isBuiltInLearningPlan(note) && new Date(note.updatedAt || note.createdAt) >= weekStart).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const groups = [
     { key:'learning', icon:'◌', title:'学习', empty:'这周还没有学习记录' },
     { key:'work', icon:'◇', title:'工作', empty:'这周还没有工作记录' },
@@ -499,7 +499,8 @@ async function openDetail(id) {
 
 function render() {
   const q = state.query.toLocaleLowerCase();
-  const visible = state.notes.filter(note => {
+  const recordNotes = state.notes.filter(note => !isBuiltInLearningPlan(note));
+  const visible = recordNotes.filter(note => {
     const matchesStatus = state.filter === 'all' || note.status === state.filter;
     const matchesCategory = categoryMatches(note);
     const haystack = [note.title, note.problem, note.process, note.result, note.category, ...Object.values(learningData(note)), ...(note.tags || [])].join(' ').toLocaleLowerCase();
@@ -516,13 +517,13 @@ function render() {
       <footer class="card-footer"><span>${formatDate(note.updatedAt)}</span><span class="card-actions"><button class="mini-btn pin-btn" data-id="${note.id}" title="${note.pinned ? '取消置顶' : '置顶'}" aria-label="${note.pinned ? '取消置顶' : '置顶'}">${note.pinned ? '◆' : '◇'}</button><button class="mini-btn view-btn" data-id="${note.id}" type="button">查看</button><button class="mini-btn edit-btn" data-id="${note.id}" title="编辑" aria-label="编辑">✎</button></span></footer>
     </article>`).join('');
 
-  $('#totalCount').textContent = state.notes.length;
-  $('#solvedCount').textContent = state.notes.filter(n => n.status === 'solved').length;
-  $('#weekCount').textContent = state.notes.filter(n => new Date(n.createdAt) >= startOfWeek()).length;
+  $('#totalCount').textContent = recordNotes.length;
+  $('#solvedCount').textContent = recordNotes.filter(n => n.status === 'solved').length;
+  $('#weekCount').textContent = recordNotes.filter(n => new Date(n.createdAt) >= startOfWeek()).length;
   $('#resultCount').textContent = `${visible.length} 条`;
   $('#listTitle').textContent = q ? '搜索结果' : (state.filter === 'all' ? '全部记录' : statusMeta[state.filter].title);
   $('#emptyState').hidden = visible.length > 0;
-  $('#emptyText').textContent = state.notes.length ? '没有找到符合条件的记录，换个关键词或筛选试试。' : '记下第一个问题，让经验开始积累。';
+  $('#emptyText').textContent = recordNotes.length ? '没有找到符合条件的记录，换个关键词或筛选试试。' : '记下第一个问题，让经验开始积累。';
   renderCategories();
   renderCategoryChips();
   renderPlans();
@@ -964,7 +965,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=15').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=16').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

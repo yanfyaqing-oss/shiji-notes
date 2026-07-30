@@ -135,11 +135,18 @@
   <dialog id="settingsDialog" class="settings-dialog">
     <div class="dialog-head"><div><p class="eyebrow">数据与设置</p><h2>保管你的记录</h2></div><button class="close-btn" type="button" data-settings-close aria-label="关闭">×</button></div>
     <div class="settings-body">
+      <div class="setting-item"><div><strong>本周总结</strong><p>按学习、工作和生活整理本周的记录与结果。</p></div><button id="weeklySummaryBtn" class="secondary-btn" type="button">查看总结</button></div>
       <div class="setting-item"><div><strong>导出备份</strong><p>下载全部记录，可在另一台设备导入。</p></div><button id="exportBtn" class="secondary-btn" type="button">导出 JSON</button></div>
       <div class="setting-item"><div><strong>导入备份</strong><p>从拾记备份文件恢复或合并记录。</p></div><button id="importBtn" class="secondary-btn" type="button">选择文件</button><input id="importInput" type="file" accept="application/json,.json" hidden></div>
       <div class="setting-item"><div><strong>安装到桌面</strong><p>像普通应用一样打开，并支持离线使用。</p></div><button id="installBtn" class="secondary-btn" type="button" disabled>等待浏览器支持</button></div>
       <p class="storage-note">记录默认只保存在当前浏览器中。请定期导出备份，换设备时先导出再导入。</p>
     </div>
+  </dialog>
+
+  <dialog id="summaryDialog" class="settings-dialog summary-dialog">
+    <div class="dialog-head"><div><p class="eyebrow">每周复盘</p><h2>学习 · 工作 · 生活</h2></div><button id="summaryCloseBtn" class="close-btn" type="button" aria-label="关闭本周总结">×</button></div>
+    <div id="summaryContent" class="summary-content"></div>
+    <div class="dialog-actions"><span class="action-spacer"></span><button id="summaryDoneBtn" class="primary-btn" type="button">完成复盘</button></div>
   </dialog>
 
   <dialog id="imageDialog" class="image-dialog">

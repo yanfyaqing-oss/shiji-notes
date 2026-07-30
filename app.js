@@ -26,6 +26,38 @@ function formatDate(date) {
 function startOfWeek() { const d = new Date(); const day = d.getDay() || 7; d.setHours(0,0,0,0); d.setDate(d.getDate() - day + 1); return d; }
 function excerpt(note) { return note.result || note.problem || note.process || '还没有补充详细内容。'; }
 
+function weeklyGroup(note) {
+  const text = [note.category, note.title, ...(note.tags || [])].join(' ').toLocaleLowerCase();
+  if (/学习|课程|阅读|读书|考试|知识|练习/.test(text)) return 'learning';
+  if (/生活|家庭|健康|运动|旅行|家务|日常/.test(text)) return 'life';
+  return 'work';
+}
+
+function openWeeklySummary() {
+  const weekStart = startOfWeek();
+  const notes = state.notes.filter(note => new Date(note.updatedAt || note.createdAt) >= weekStart).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const groups = [
+    { key:'learning', icon:'◌', title:'学习', empty:'这周还没有学习记录' },
+    { key:'work', icon:'◇', title:'工作', empty:'这周还没有工作记录' },
+    { key:'life', icon:'○', title:'生活', empty:'这周还没有生活记录' }
+  ];
+  const solved = notes.filter(note => note.status === 'solved').length;
+  const photos = notes.reduce((sum, note) => sum + (Number(note.photoCount) || 0), 0);
+  const pending = notes.filter(note => note.status === 'open').slice(0, 3);
+  const rangeEnd = new Date(weekStart); rangeEnd.setDate(rangeEnd.getDate() + 6);
+
+  $('#summaryContent').innerHTML = `
+    <div class="summary-range">${weekStart.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})} — ${rangeEnd.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})}</div>
+    <div class="summary-stats"><div><strong>${notes.length}</strong><span>条记录</span></div><div><strong>${solved}</strong><span>项完成</span></div><div><strong>${photos}</strong><span>张图片</span></div></div>
+    ${notes.length ? groups.map(group => {
+      const items = notes.filter(note => weeklyGroup(note) === group.key);
+      return `<section class="summary-group"><h3><span>${group.icon}</span>${group.title}<small>${items.length}</small></h3>${items.length ? `<div class="summary-list">${items.map(note => `<article><div><strong>${escapeHTML(note.title)}</strong><span class="status-badge ${note.status}">${statusMeta[note.status]?.label || '待解决'}</span></div><p>${escapeHTML(excerpt(note))}</p></article>`).join('')}</div>` : `<p class="summary-empty">${group.empty}</p>`}</section>`;
+    }).join('') : '<div class="summary-zero"><span>✦</span><h3>本周还没有记录</h3><p>从今天遇到的一个问题开始，周末就会有属于你的回顾。</p></div>'}
+    ${notes.length ? `<section class="summary-next"><h3>下周可以继续</h3>${pending.length ? `<ul>${pending.map(note => `<li>${escapeHTML(note.title)}</li>`).join('')}</ul>` : '<p>本周记录都已解决，可以挑一项最有价值的经验继续巩固。</p>'}</section>` : ''}`;
+  $('#settingsDialog').close();
+  $('#summaryDialog').showModal();
+}
+
 const PHOTO_DB = 'shiji-media-v1';
 const PHOTO_STORE = 'photos';
 const MAX_PHOTOS = 5;
@@ -446,6 +478,10 @@ $('#detailEditBtn').addEventListener('click', () => {
   $('#detailDialog').close();
   if (id) openForm(id);
 });
+$('#weeklySummaryBtn').addEventListener('click', openWeeklySummary);
+$('#summaryCloseBtn').addEventListener('click', () => $('#summaryDialog').close());
+$('#summaryDoneBtn').addEventListener('click', () => $('#summaryDialog').close());
+$('#summaryDialog').addEventListener('click', event => { if (event.target === $('#summaryDialog')) $('#summaryDialog').close(); });
 $('#notesGrid').addEventListener('click', event => {
   const pin = event.target.closest('.pin-btn'); const view = event.target.closest('.view-btn'); const edit = event.target.closest('.edit-btn');
   if (pin) { event.stopPropagation(); const note = state.notes.find(n => n.id === pin.dataset.id); note.pinned = !note.pinned; note.updatedAt = new Date().toISOString(); save(); render(); toast(note.pinned ? '已置顶' : '已取消置顶'); return; }

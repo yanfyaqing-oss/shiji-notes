@@ -50,7 +50,7 @@
       </section>
 
       <section id="planSection" class="plan-section" aria-labelledby="planTitle" hidden>
-        <div class="plan-heading"><div><span>下一步</span><h2 id="planTitle">我的计划</h2></div><small id="planProgress"></small></div>
+        <div class="plan-heading"><div><span>下一步</span><h2 id="planTitle">我的计划</h2></div><div class="plan-heading-actions"><small id="planProgress"></small><a class="calendar-link" href="u3d-spine-learning-plan.ics">添加到苹果日历</a></div></div>
         <div id="planList" class="plan-list"></div>
       </section>
 
@@ -148,7 +148,11 @@
               <label class="field"><span>安排在</span><select id="actionPeriodInput"><option value="today">今天</option><option value="week">本周</option><option value="later">以后</option></select></label>
               <label class="field"><span>日期 <small>可不填</small></span><input id="dueDateInput" type="date"></label>
             </div>
-            <label class="plan-complete"><input id="actionDoneInput" type="checkbox"> 这项计划已经完成</label>
+            <div class="form-row">
+              <label class="field"><span>重复</span><select id="recurrenceInput"><option value="">不重复</option><option value="study_days">周一至周六</option><option value="unity_days">每周二、周四</option><option value="spine_weekend">每周六、周日</option></select></label>
+              <label class="field"><span>开始时间 <small>可不填</small></span><input id="planTimeInput" type="time"></label>
+            </div>
+            <label class="plan-complete"><input id="actionDoneInput" type="checkbox"> <span id="actionDoneLabel">这项计划已经完成</span></label>
           </div>
         </section>
         </div>
@@ -204,6 +208,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="learning-plan.js"></script>
   <script src="app.js"></script>
   <script src="cloud.js"></script>
 </body>

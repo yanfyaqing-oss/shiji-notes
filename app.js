@@ -32,6 +32,43 @@ function autoCategory(value = '') {
   if (/生活|家庭|健康|运动|旅行|家务|日常|购物/.test(text)) return '生活';
   return '工作';
 }
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+function isRecurringPlan(note) { return Boolean(note.recurrence); }
+function isPlanScheduledToday(note, date = new Date()) {
+  const day = date.getDay();
+  const dateKey = localDateKey(date);
+  if (note.id === 'learning-plan-u3d') return dateKey >= '2026-08-04' && dateKey <= '2027-05-06' && (day === 2 || day === 4);
+  if (note.id === 'learning-plan-spine') return dateKey >= '2026-08-01' && dateKey <= '2027-05-09' && (day === 0 || day === 6);
+  if (note.recurrence === 'study_days') return day !== 0;
+  if (note.recurrence === 'unity_days') return day === 2 || day === 4;
+  if (note.recurrence === 'spine_weekend') return day === 0 || day === 6;
+  return true;
+}
+function isPlanDone(note) { return isRecurringPlan(note) ? note.lastCompletedDate === localDateKey() : Boolean(note.actionDone); }
+function recurrenceLabel(note) {
+  return ({ study_days:'周一至周六', unity_days:'周二、周四', spine_weekend:'周六、周日' })[note.recurrence] || ({today:'今天',week:'本周',later:'以后'})[note.actionPeriod] || '本周';
+}
+function learningTaskForToday(note, date = new Date()) {
+  const plan = window.SHIJI_LEARNING_PLAN;
+  if (!plan || !['learning-plan-u3d','learning-plan-spine'].includes(note.id)) return note.nextAction;
+  const start = new Date(`${plan.start}T00:00:00`); const today = new Date(date); today.setHours(0,0,0,0);
+  const weekNumber = Math.floor((today - start) / 604800000) + 1;
+  if (weekNumber < 1) {
+    if (note.id === 'learning-plan-spine' && localDateKey(today) === '2026-08-01') return '启动准备：整理个人 Spine 角色、骨骼、Slot、Attachment 和贴图';
+    if (note.id === 'learning-plan-spine' && localDateKey(today) === '2026-08-02') return '启动准备：建立动画名称与 WeaponPoint、HitPoint 等挂点规范';
+    return note.id === 'learning-plan-u3d' ? '40周 U3D 计划将于8月4日中午开始' : 'Spine 启动准备将于8月1日晚开始';
+  }
+  const week = plan.weeks.find(item => item.week === weekNumber);
+  if (!week) return weekNumber > 40 ? '40周学习计划已完成，查看作品集与复盘记录' : note.nextAction;
+  const scheduledDays = note.id === 'learning-plan-u3d' ? [2, 4] : [0, 6];
+  if (!scheduledDays.includes(today.getDay())) return `第${weekNumber}周 · 今日无${note.id === 'learning-plan-u3d' ? ' U3D' : ' Spine'} 训练`;
+  const dayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  const task = week.tasks.find(item => item.date.includes(dayNames[today.getDay()]));
+  return task ? `第${weekNumber}周 · ${task.task}` : `第${weekNumber}周 · 今天休息或补课`;
+}
 
 function categoryMatches(note) {
   if (state.category === 'all') return true;
@@ -47,6 +84,10 @@ function setFormDetails(expanded) {
 
 function setPlanFields(enabled) {
   $('#planFields').hidden = !enabled;
+}
+
+function updatePlanCompletionLabel() {
+  $('#actionDoneLabel').textContent = $('#recurrenceInput').value ? '今天已经完成' : '这项计划已经完成';
 }
 
 function weeklyGroup(note) {
@@ -66,7 +107,7 @@ function openWeeklySummary() {
   ];
   const solved = notes.filter(note => note.status === 'solved').length;
   const photos = notes.reduce((sum, note) => sum + (Number(note.photoCount) || 0), 0);
-  const pending = notes.filter(note => note.nextAction && !note.actionDone).slice(0, 3);
+  const pending = notes.filter(note => note.nextAction && ((!isRecurringPlan(note) && !note.actionDone) || (isRecurringPlan(note) && isPlanScheduledToday(note) && !isPlanDone(note)))).slice(0, 3);
   const rangeEnd = new Date(weekStart); rangeEnd.setDate(rangeEnd.getDate() + 6);
 
   $('#summaryContent').innerHTML = `
@@ -87,16 +128,18 @@ function renderCategoryChips() {
 }
 
 function renderPlans() {
-  const plans = state.notes.filter(note => note.nextAction).sort((a,b) => Number(a.actionDone) - Number(b.actionDone) || ['today','week','later'].indexOf(a.actionPeriod || 'week') - ['today','week','later'].indexOf(b.actionPeriod || 'week') || new Date(b.updatedAt) - new Date(a.updatedAt));
+  const plans = state.notes.filter(note => note.nextAction).sort((a,b) => Number(!isPlanScheduledToday(a)) - Number(!isPlanScheduledToday(b)) || Number(isPlanDone(a)) - Number(isPlanDone(b)) || (a.planTime || '99:99').localeCompare(b.planTime || '99:99') || new Date(b.updatedAt) - new Date(a.updatedAt));
   $('#planSection').hidden = plans.length === 0;
   if (!plans.length) return;
-  const pending = plans.filter(note => !note.actionDone).length;
-  $('#planProgress').textContent = `${pending} 项待完成 · ${plans.length - pending} 项已完成`;
-  const periodLabels = { today:'今天', week:'本周', later:'以后' };
-  $('#planList').innerHTML = plans.map(note => `<article class="plan-item ${note.actionDone ? 'done' : ''}" data-id="${note.id}">
-    <label><input class="plan-check" data-id="${note.id}" type="checkbox" ${note.actionDone ? 'checked' : ''}><span></span></label>
-    <button class="plan-open" data-id="${note.id}" type="button"><strong>${escapeHTML(note.nextAction)}</strong><small>${periodLabels[note.actionPeriod] || '本周'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small></button>
-  </article>`).join('');
+  const scheduled = plans.filter(note => isPlanScheduledToday(note));
+  const pending = scheduled.filter(note => !isPlanDone(note)).length;
+  const completed = scheduled.length - pending;
+  const resting = plans.length - scheduled.length;
+  $('#planProgress').textContent = `${pending} 项今日待完成 · ${completed} 项今日已完成${resting ? ` · ${resting} 项非训练日` : ''}`;
+  $('#planList').innerHTML = plans.map(note => { const scheduled = isPlanScheduledToday(note); const action = learningTaskForToday(note); return `<article class="plan-item ${isPlanDone(note) ? 'done' : ''} ${scheduled ? '' : 'upcoming'}" data-id="${note.id}">
+    <label><input class="plan-check" data-id="${note.id}" type="checkbox" ${isPlanDone(note) ? 'checked' : ''} ${scheduled ? '' : 'disabled'}><span></span></label>
+    <button class="plan-open" data-id="${note.id}" type="button"><strong>${note.planTime ? `<time>${escapeHTML(note.planTime)}</time>` : ''}${escapeHTML(action)}</strong><small>${recurrenceLabel(note)}${scheduled ? ' · 今天' : ' · 非训练日'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small></button>
+  </article>`; }).join('');
 }
 
 const PHOTO_DB = 'shiji-media-v1';
@@ -284,7 +327,7 @@ async function openDetail(id) {
     ${detailSection('问题 / 背景', note.problem)}
     ${detailSection('过程 / 思路', note.process)}
     ${detailSection('结果 / 结论', note.result)}
-    ${note.nextAction ? `<section class="detail-plan ${note.actionDone ? 'done' : ''}"><span>${note.actionDone ? '✓ 已完成' : '下一步计划'}</span><strong>${escapeHTML(note.nextAction)}</strong><small>${({today:'今天',week:'本周',later:'以后'})[note.actionPeriod] || '本周'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : ''}
+    ${note.nextAction ? `<section class="detail-plan ${isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成' : '下一步计划'}</span><strong>${escapeHTML(learningTaskForToday(note))}</strong><small>${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : ''}
     ${(note.tags || []).length ? `<div class="detail-tags">${note.tags.map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
     ${note.photoCount ? '<section class="detail-photos-section"><h3>图片附件</h3><div id="detailPhotos" class="detail-photos"><span class="detail-photo-loading">正在读取图片…</span></div></section>' : ''}`;
   $('#detailDialog').showModal();
@@ -366,7 +409,10 @@ async function openForm(id = null) {
   $('#nextActionInput').value = note?.nextAction || '';
   $('#actionPeriodInput').value = note?.actionPeriod || 'week';
   $('#dueDateInput').value = note?.dueDate || '';
-  $('#actionDoneInput').checked = Boolean(note?.actionDone);
+  $('#recurrenceInput').value = note?.recurrence || '';
+  $('#planTimeInput').value = note?.planTime || '';
+  $('#actionDoneInput').checked = note ? isPlanDone(note) : false;
+  updatePlanCompletionLabel();
   setPlanFields($('#planEnabledInput').checked);
   const hasDetails = Boolean(note && (note.problem || note.process || note.result || note.tags?.length || note.photoCount || note.nextAction));
   setFormDetails(hasDetails);
@@ -386,6 +432,10 @@ async function openForm(id = null) {
       $('#nextActionInput').value = draft.nextAction || '';
       $('#actionPeriodInput').value = draft.actionPeriod || 'week';
       $('#dueDateInput').value = draft.dueDate || '';
+      $('#recurrenceInput').value = draft.recurrence || '';
+      $('#planTimeInput').value = draft.planTime || '';
+      $('#actionDoneInput').checked = Boolean(draft.actionDone);
+      updatePlanCompletionLabel();
       setPlanFields($('#planEnabledInput').checked);
       if (draft.problem || draft.process || draft.result || draft.tags || draft.planEnabled) setFormDetails(true);
       toast('已恢复上次未保存的草稿');
@@ -423,7 +473,10 @@ function saveFormDraft() {
     planEnabled: $('#planEnabledInput').checked,
     nextAction: $('#nextActionInput').value,
     actionPeriod: $('#actionPeriodInput').value,
-    dueDate: $('#dueDateInput').value
+    dueDate: $('#dueDateInput').value,
+    recurrence: $('#recurrenceInput').value,
+    planTime: $('#planTimeInput').value,
+    actionDone: $('#actionDoneInput').checked
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
@@ -432,7 +485,7 @@ async function saveQuickNote() {
   const title = $('#quickInput').value.trim();
   if (!title) { $('#quickInput').focus(); toast('先写一句要记录的内容'); return; }
   const now = new Date().toISOString();
-  const note = { id:uid(), title, category:autoCategory(title), status:'open', problem:'', process:'', result:'', tags:[], photoCount:0, pinned:false, nextAction:'', actionPeriod:'week', dueDate:'', actionDone:false, createdAt:now, updatedAt:now };
+  const note = { id:uid(), title, category:autoCategory(title), status:'open', problem:'', process:'', result:'', tags:[], photoCount:0, pinned:false, nextAction:'', actionPeriod:'week', dueDate:'', actionDone:false, recurrence:'', planTime:'', lastCompletedDate:'', createdAt:now, updatedAt:now };
   state.notes.unshift(note);
   $('#quickInput').value = '';
   save(); render(); toast(`已快速记录，并归入“${note.category}”`);
@@ -515,7 +568,12 @@ $('#noteForm').addEventListener('submit', async event => {
   const now = new Date().toISOString(); const old = state.notes.find(n => n.id === state.editingId);
   const planEnabled = $('#planEnabledInput').checked;
   const nextAction = planEnabled ? ($('#nextActionInput').value.trim() || `继续处理：${title}`) : '';
-  const note = { id: old?.id || uid(), title, category: $('#categoryInput').value.trim() || autoCategory(title), status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, nextAction, actionPeriod:planEnabled ? $('#actionPeriodInput').value : 'week', dueDate:planEnabled ? $('#dueDateInput').value : '', actionDone:planEnabled && $('#actionDoneInput').checked, createdAt: old?.createdAt || now, updatedAt: now };
+  const recurrence = planEnabled ? $('#recurrenceInput').value : '';
+  const checked = planEnabled && $('#actionDoneInput').checked;
+  let lastCompletedDate = old?.lastCompletedDate || '';
+  if (recurrence && checked) lastCompletedDate = localDateKey();
+  else if (recurrence && !checked && lastCompletedDate === localDateKey()) lastCompletedDate = '';
+  const note = { id: old?.id || uid(), title, category: $('#categoryInput').value.trim() || autoCategory(title), status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, nextAction, actionPeriod:planEnabled ? $('#actionPeriodInput').value : 'week', dueDate:planEnabled ? $('#dueDateInput').value : '', actionDone:planEnabled && !recurrence && checked, recurrence, planTime:planEnabled ? $('#planTimeInput').value : '', lastCompletedDate:planEnabled ? lastCompletedDate : '', createdAt: old?.createdAt || now, updatedAt: now };
   const submitButton = $('#noteForm button[type="submit"]');
   submitButton.disabled = true;
   submitButton.textContent = '正在保存…';
@@ -581,6 +639,7 @@ $('#detailEditBtn').addEventListener('click', () => {
 });
 $('#formMoreBtn').addEventListener('click', () => setFormDetails($('#formDetails').hidden));
 $('#planEnabledInput').addEventListener('change', event => { setPlanFields(event.target.checked); if (event.target.checked) $('#nextActionInput').focus(); });
+$('#recurrenceInput').addEventListener('change', updatePlanCompletionLabel);
 let draftSaveTimer;
 $('#noteForm').addEventListener('input', () => { clearTimeout(draftSaveTimer); draftSaveTimer = setTimeout(saveFormDraft, 350); });
 $('#quickSaveBtn').addEventListener('click', saveQuickNote);
@@ -608,7 +667,9 @@ $('#categoryChips').addEventListener('click', event => { const button = event.ta
 $('#planList').addEventListener('change', event => {
   const check = event.target.closest('.plan-check'); if (!check) return;
   const note = state.notes.find(item => item.id === check.dataset.id); if (!note) return;
-  note.actionDone = check.checked; note.updatedAt = new Date().toISOString(); save(); render(); toast(check.checked ? '计划已完成' : '已恢复到计划'); window.cloudApi?.pushNote(note).catch(() => {});
+  if (isRecurringPlan(note)) note.lastCompletedDate = check.checked ? localDateKey() : '';
+  else note.actionDone = check.checked;
+  note.updatedAt = new Date().toISOString(); save(); render(); toast(check.checked ? '今天的计划已完成' : '已恢复到今天的计划'); window.cloudApi?.pushNote(note).catch(() => {});
 });
 $('#planList').addEventListener('click', event => { const button = event.target.closest('.plan-open'); if (button) openDetail(button.dataset.id); });
 $('#statusFilters').addEventListener('click', event => { const btn = event.target.closest('.filter'); if (!btn) return; state.filter = btn.dataset.status; document.querySelectorAll('.filter').forEach(x => x.classList.toggle('active', x === btn)); render(); });

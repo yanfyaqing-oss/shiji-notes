@@ -8,7 +8,7 @@
   <title>拾记 · 问题与结果</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="app-shell">
@@ -52,6 +52,11 @@
       <section id="planSection" class="plan-section" aria-labelledby="planTitle" hidden>
         <div class="plan-heading"><div><span>下一步</span><h2 id="planTitle">我的计划</h2></div><div class="plan-heading-actions"><small id="planProgress"></small><a class="calendar-link" href="u3d-spine-learning-plan.ics">添加到苹果日历</a></div></div>
         <div id="planList" class="plan-list"></div>
+      </section>
+
+      <section id="todayDoneSection" class="today-done-section" aria-labelledby="todayDoneTitle" hidden>
+        <div class="today-done-heading"><div><span>今日回顾</span><h2 id="todayDoneTitle">今天完成</h2></div><small id="todayDoneCount"></small></div>
+        <div id="todayDoneList" class="today-done-list"></div>
       </section>
 
       <section class="toolbar" aria-label="搜索和筛选">
@@ -104,6 +109,7 @@
         <span id="detailTime"></span>
         <span class="action-spacer"></span>
         <button id="detailDoneBtn" class="ghost-btn" type="button">关闭</button>
+        <button id="detailStudyBtn" class="primary-btn" type="button" hidden>记录今天学习</button>
         <button id="detailEditBtn" class="primary-btn" type="button">编辑记录</button>
       </footer>
     </article>
@@ -224,8 +230,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="learning-plan.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="cloud.js?v=13"></script>
+  <script src="learning-plan.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="cloud.js?v=14"></script>
 </body>
 </html>

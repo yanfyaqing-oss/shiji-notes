@@ -201,7 +201,6 @@
       const now = new Date().toISOString();
       localStorage.setItem(LAST_SYNC_KEY, now);
       setStatus(formatSyncTime(now));
-      toast('云端同步完成');
     } catch (error) {
       console.warn('Cloud sync failed:', error?.message || error);
       setStatus('同步失败，本地记录不受影响');
@@ -258,7 +257,12 @@
   $('#cloudDialogClose').addEventListener('click', () => cloudDialog.close());
   $('#cloudSignInBtn').addEventListener('click', () => signIn().catch(() => toast('登录失败，请检查网络')));
   $('#cloudSignUpBtn').addEventListener('click', () => signUp().catch(() => toast('注册失败，请检查网络')));
-  $('#syncNowBtn').addEventListener('click', () => syncAll().catch(() => {}));
+  $('#syncNowBtn').addEventListener('click', async () => {
+    try {
+      await syncAll();
+      toast('云端同步完成');
+    } catch {}
+  });
   $('#cloudSignOutBtn').addEventListener('click', async () => { await client.auth.signOut(); cloudDialog.close(); toast('已退出云端，本地记录仍然保留'); });
 
   if (!window.supabase?.createClient) {

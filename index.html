@@ -19,6 +19,7 @@
       </a>
       <div class="top-actions">
         <button id="themeBtn" class="icon-btn" type="button" aria-label="切换深色模式" title="切换主题">◐</button>
+        <button id="cloudBtn" class="icon-btn cloud-btn" type="button" aria-label="云端同步" title="云端同步">☁</button>
         <button id="moreBtn" class="icon-btn" type="button" aria-label="数据与设置" title="数据与设置">•••</button>
         <button id="newNoteBtn" class="primary-btn" type="button"><span>＋</span> 新建记录</button>
       </div>
@@ -127,7 +128,27 @@
     <img id="imageDialogImg" alt="笔记图片大图">
   </dialog>
 
+  <dialog id="cloudDialog" class="settings-dialog cloud-dialog">
+    <div class="dialog-head"><div><p class="eyebrow">云端同步</p><h2>电脑与手机共享记录</h2></div><button id="cloudDialogClose" class="close-btn" type="button" aria-label="关闭云同步">×</button></div>
+    <div class="settings-body">
+      <div id="cloudSignedOut">
+        <p class="cloud-intro">使用同一个邮箱登录后，文字和图片会在电脑与手机之间合并同步。本地保存和 JSON 备份仍然保留。</p>
+        <label class="field full"><span>邮箱</span><input id="cloudEmail" type="email" autocomplete="email" placeholder="你的邮箱地址"></label>
+        <label class="field full"><span>密码</span><input id="cloudPassword" type="password" autocomplete="current-password" minlength="8" placeholder="至少 8 位"></label>
+        <div class="cloud-auth-actions"><button id="cloudSignUpBtn" class="secondary-btn" type="button">创建同步账号</button><button id="cloudSignInBtn" class="primary-btn" type="button">登录并同步</button></div>
+        <p class="storage-note">同步账号属于「拾记」应用，与 Supabase 控制台账号相互独立。首次注册后可能需要打开邮箱确认。</p>
+      </div>
+      <div id="cloudSignedIn" hidden>
+        <div class="cloud-account"><span class="cloud-avatar">☁</span><div><strong id="cloudUserEmail"></strong><p id="cloudStatusText">准备同步</p></div></div>
+        <div class="cloud-sync-actions"><button id="syncNowBtn" class="primary-btn" type="button">立即同步</button><button id="cloudSignOutBtn" class="secondary-btn" type="button">退出登录</button></div>
+        <p class="storage-note">保存记录时会自动上传；打开应用、回到前台或其他设备发生变化时也会同步。云端异常时不会影响本地记录。</p>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="app.js"></script>
+  <script src="cloud.js"></script>
 </body>
 </html>

@@ -335,6 +335,7 @@ $('#noteForm').addEventListener('submit', async event => {
     await savePhotoDraft(note.id);
     if (old) state.notes = state.notes.map(n => n.id === old.id ? note : n); else state.notes.unshift(note);
     save(); render(); closeForm(); toast(old ? '记录已更新' : '记录已保存');
+    window.cloudApi?.pushNote(note).catch(() => {});
   } catch {
     toast('图片保存失败，请检查浏览器存储空间后重试');
   } finally {
@@ -348,6 +349,7 @@ $('#deleteBtn').addEventListener('click', async () => {
   if (note && confirm(`确定删除“${note.title}”吗？文字和图片都会被删除，此操作无法撤销。`)) {
     try { await deleteNotePhotos(note.id); } catch { /* 继续删除文字记录。 */ }
     state.notes = state.notes.filter(n => n.id !== note.id); save(); render(); closeForm(); toast('记录已删除');
+    window.cloudApi?.deleteNote(note.id).catch(() => {});
   }
 });
 
@@ -418,7 +420,7 @@ $('#importInput').addEventListener('change', async event => {
         transaction.oncomplete=resolve; transaction.onerror=()=>reject(transaction.error);
       });
     }
-    const map=new Map(state.notes.map(n=>[n.id,n])); valid.forEach(n=>map.set(n.id,n)); state.notes=[...map.values()]; save();render();$('#settingsDialog').close();toast(`已导入 ${valid.length} 条记录和 ${photoBackup.length} 张图片`);
+    const map=new Map(state.notes.map(n=>[n.id,n])); valid.forEach(n=>map.set(n.id,n)); state.notes=[...map.values()]; save();render();$('#settingsDialog').close();toast(`已导入 ${valid.length} 条记录和 ${photoBackup.length} 张图片`); window.cloudApi?.pushAll().catch(()=>{});
   } catch { alert('无法读取这个备份文件，请确认它是拾记导出的 JSON 文件。'); }
   finally { event.target.value=''; }
 });

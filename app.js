@@ -53,6 +53,22 @@ function currentLearningWeek(date = new Date()) {
 }
 function isRecurringPlan(note) { return Boolean(note.recurrence); }
 function isBuiltInLearningPlan(note) { return ['learning-plan-u3d','learning-plan-spine'].includes(note.id); }
+function completedTaskKeys(note) { return Array.isArray(note.completedTasks) ? note.completedTasks : []; }
+function planRouteDays(note) { return note.id === 'learning-plan-u3d' ? ['周二','周四'] : ['周六','周日']; }
+function planTaskKey(note, weekNumber, taskIndex) { return `${note.id === 'learning-plan-u3d' ? 'u3d' : 'spine'}-w${weekNumber}-t${taskIndex + 1}`; }
+function learningPlanTaskInfo(note, date = new Date()) {
+  const plan = window.SHIJI_LEARNING_PLAN;
+  if (!plan || !isBuiltInLearningPlan(note)) return null;
+  const start = new Date(`${plan.start}T00:00:00`); const current = new Date(date); current.setHours(0,0,0,0);
+  const weekNumber = Math.floor((current - start) / 604800000) + 1;
+  const week = plan.weeks.find(item => item.week === weekNumber);
+  if (!week) return null;
+  const dayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  const tasks = week.tasks.filter(task => planRouteDays(note).some(day => task.date.includes(day)));
+  const taskIndex = tasks.findIndex(task => task.date.includes(dayNames[current.getDay()]));
+  if (taskIndex < 0) return null;
+  return { week, task:tasks[taskIndex], taskIndex, key:planTaskKey(note, weekNumber, taskIndex) };
+}
 function isPlanScheduledToday(note, date = new Date()) {
   const day = date.getDay();
   const dateKey = localDateKey(date);
@@ -63,7 +79,13 @@ function isPlanScheduledToday(note, date = new Date()) {
   if (note.recurrence === 'spine_weekend') return day === 0 || day === 6;
   return true;
 }
-function isPlanDone(note) { return isRecurringPlan(note) ? note.lastCompletedDate === localDateKey() : Boolean(note.actionDone); }
+function isPlanDone(note) {
+  if (isBuiltInLearningPlan(note)) {
+    const task = learningPlanTaskInfo(note);
+    return task ? completedTaskKeys(note).includes(task.key) || note.lastCompletedDate === localDateKey() : false;
+  }
+  return isRecurringPlan(note) ? note.lastCompletedDate === localDateKey() : Boolean(note.actionDone);
+}
 function recurrenceLabel(note) {
   return ({ study_days:'周一至周六', unity_days:'周二、周四', spine_weekend:'周六、周日' })[note.recurrence] || ({today:'今天',week:'本周',later:'以后'})[note.actionPeriod] || '本周';
 }
@@ -408,11 +430,21 @@ function fullLearningPlanDetail(note, date = new Date()) {
   const rawWeek = Math.floor((current - start) / 604800000) + 1;
   const openWeek = Math.min(plan.weeks.length, Math.max(1, rawWeek));
   const schedule = u3d ? '每周二、周四 12:00–13:30 · 每周共3小时' : '每周六、周日 20:30开始';
+  const completed = completedTaskKeys(note);
+  const completedCount = completed.filter(key => key.startsWith(u3d ? 'u3d-' : 'spine-')).length;
+  const dayOffsets = { '周一':0, '周二':1, '周三':2, '周四':3, '周五':4, '周六':5, '周日':6 };
   return `<section class="full-learning-plan" aria-labelledby="fullPlanTitle">
-    <header class="full-plan-head"><div><span>完整路线</span><h3 id="fullPlanTitle">${u3d ? 'U3D' : 'Spine'} 40周全部计划</h3><p>${schedule}</p></div><button class="full-plan-toggle" type="button" data-expanded="false">展开全部40周</button></header>
+    <header class="full-plan-head"><div><span>完整路线 · 已完成 ${completedCount}/80</span><h3 id="fullPlanTitle">${u3d ? 'U3D' : 'Spine'} 40周全部计划</h3><p>${schedule} · 可以勾选未来任务作为提前完成</p></div><button class="full-plan-toggle" type="button" data-expanded="false">展开全部40周</button></header>
     <div class="full-plan-weeks">${plan.weeks.map(week => {
       const tasks = week.tasks.filter(task => wantedDays.some(day => task.date.includes(day)));
-      return `<details class="full-plan-week" ${week.week === openWeek ? 'open' : ''}><summary><strong>第${week.week}周</strong><span>${escapeHTML(week.range)}</span><small>${tasks.length}次训练</small></summary><ol>${tasks.map(task => `<li><time>${escapeHTML(task.date)}</time><p>${escapeHTML(task.task)}</p></li>`).join('')}</ol></details>`;
+      const weekDone = tasks.filter((task, index) => completed.includes(planTaskKey(note, week.week, index))).length;
+      return `<details class="full-plan-week" ${week.week === openWeek ? 'open' : ''}><summary><strong>第${week.week}周</strong><span>${escapeHTML(week.range)}</span><small>${weekDone}/${tasks.length} 已完成</small></summary><ol>${tasks.map((task, index) => {
+        const key = planTaskKey(note, week.week, index); const done = completed.includes(key);
+        const dayName = Object.keys(dayOffsets).find(day => task.date.includes(day));
+        const taskDate = new Date(start); taskDate.setDate(start.getDate() + (week.week - 1) * 7 + dayOffsets[dayName]);
+        const taskDateKey = localDateKey(taskDate); const early = done && taskDate > current;
+        return `<li class="${done ? 'task-completed' : ''}"><label class="full-plan-task"><input class="full-plan-task-check" type="checkbox" data-note-id="${note.id}" data-task-key="${key}" data-task-date="${taskDateKey}" ${done ? 'checked' : ''}><span class="full-plan-task-box">✓</span><span class="full-plan-task-copy"><time>${escapeHTML(task.date)}${done ? `<b>${early ? '已提前完成' : '已完成'}</b>` : ''}</time><p>${escapeHTML(task.task)}</p></span></label></li>`;
+      }).join('')}</ol></details>`;
     }).join('')}</div>
   </section>`;
 }
@@ -783,6 +815,30 @@ $('#detailContent').addEventListener('click', event => {
   $('#imageDialogImg').src = button.querySelector('img').src;
   $('#imageDialog').showModal();
 });
+$('#detailContent').addEventListener('change', event => {
+  const check = event.target.closest('.full-plan-task-check');
+  if (!check) return;
+  const note = state.notes.find(item => item.id === check.dataset.noteId);
+  if (!note) return;
+  const completed = new Set(completedTaskKeys(note));
+  if (check.checked) completed.add(check.dataset.taskKey); else completed.delete(check.dataset.taskKey);
+  note.completedTasks = [...completed];
+  if (check.dataset.taskDate === localDateKey()) note.lastCompletedDate = check.checked ? localDateKey() : '';
+  note.updatedAt = new Date().toISOString();
+  const row = check.closest('li'); row.classList.toggle('task-completed', check.checked);
+  const time = row.querySelector('time'); const oldBadge = time.querySelector('b'); if (oldBadge) oldBadge.remove();
+  if (check.checked) {
+    const badge = document.createElement('b'); badge.textContent = check.dataset.taskDate > localDateKey() ? '已提前完成' : '已完成'; time.appendChild(badge);
+  }
+  const week = check.closest('.full-plan-week');
+  const weekChecks = [...week.querySelectorAll('.full-plan-task-check')];
+  week.querySelector('summary small').textContent = `${weekChecks.filter(item => item.checked).length}/${weekChecks.length} 已完成`;
+  const planHeader = check.closest('.full-learning-plan').querySelector('.full-plan-head>div>span');
+  planHeader.textContent = `完整路线 · 已完成 ${completed.size}/80`;
+  save(); render();
+  toast(check.checked ? (check.dataset.taskDate > localDateKey() ? '已记录为提前完成' : '这项训练已完成') : '已恢复为未完成');
+  window.cloudApi?.pushNote(note).catch(() => {});
+});
 $('#detailEditBtn').addEventListener('click', () => {
   const id = detailNoteId;
   $('#detailDialog').close();
@@ -840,7 +896,12 @@ $('#categoryChips').addEventListener('click', event => { const button = event.ta
 $('#planList').addEventListener('change', event => {
   const check = event.target.closest('.plan-check'); if (!check) return;
   const note = state.notes.find(item => item.id === check.dataset.id); if (!note) return;
-  if (isRecurringPlan(note)) note.lastCompletedDate = check.checked ? localDateKey() : '';
+  if (isBuiltInLearningPlan(note)) {
+    const task = learningPlanTaskInfo(note); const completed = new Set(completedTaskKeys(note));
+    if (task) { if (check.checked) completed.add(task.key); else completed.delete(task.key); }
+    note.completedTasks = [...completed]; note.lastCompletedDate = check.checked ? localDateKey() : '';
+  }
+  else if (isRecurringPlan(note)) note.lastCompletedDate = check.checked ? localDateKey() : '';
   else note.actionDone = check.checked;
   note.updatedAt = new Date().toISOString(); save(); render(); toast(check.checked ? '今天的计划已完成' : '已恢复到今天的计划'); window.cloudApi?.pushNote(note).catch(() => {});
 });
@@ -903,7 +964,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=14').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=15').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

@@ -50,6 +50,7 @@
       recurrence: note.recurrence || '',
       plan_time: note.planTime || null,
       last_completed_date: note.lastCompletedDate || null,
+      completed_tasks: Array.isArray(note.completedTasks) ? note.completedTasks : [],
       photo_count: Number(note.photoCount) || 0,
       created_at: note.createdAt || new Date().toISOString(),
       updated_at: note.updatedAt || new Date().toISOString(),
@@ -76,6 +77,7 @@
       recurrence: row.recurrence || '',
       planTime: row.plan_time || '',
       lastCompletedDate: row.last_completed_date || '',
+      completedTasks: Array.isArray(row.completed_tasks) ? row.completed_tasks : [],
       photoCount: Number(row.photo_count) || 0,
       createdAt: row.created_at,
       updatedAt: row.updated_at

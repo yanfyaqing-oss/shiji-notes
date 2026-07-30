@@ -105,6 +105,12 @@
       const { error: metaError } = await client.from('note_photos').upsert({ user_id:session.user.id, id:photo.id, note_id:note.id, storage_path:path, file_name:photo.name || 'photo.jpg', created_at:photo.createdAt }, { onConflict:'user_id,id' });
       if (metaError) throw metaError;
     }
+
+    // The note row is written before its photo files. Touch it again after the
+    // uploads finish so other devices receive a realtime event only when the
+    // photos are ready to download.
+    const { error: notifyError } = await client.from('notes').update({ photo_count:localPhotos.length }).eq('id', note.id);
+    if (notifyError) throw notifyError;
   }
 
   async function pushNote(note) {
@@ -120,6 +126,12 @@
     const index = state.notes.findIndex(item => item.id === note.id);
     if (index >= 0) state.notes[index] = note; else state.notes.push(note);
     await replaceLocalPhotos(note.id);
+  }
+
+  async function ensureRemotePhotos(row) {
+    const expected = Number(row.photo_count) || 0;
+    const localPhotos = await getNotePhotos(row.id);
+    if (localPhotos.length !== expected) await replaceLocalPhotos(row.id);
   }
 
   async function deleteCloudNote(noteId) {
@@ -156,6 +168,7 @@
         if (!row) await pushNote(note);
         else if (new Date(note.updatedAt) > new Date(row.updated_at)) await pushNote(note);
         else if (new Date(row.updated_at) > new Date(note.updatedAt)) await pullNote(row);
+        else await ensureRemotePhotos(row);
         remote.delete(note.id);
       }
       for (const row of remote.values()) await pullNote(row);

@@ -108,6 +108,34 @@ function learningTaskForToday(note, date = new Date()) {
   return task ? `第${weekNumber}周 · ${task.task}` : `第${weekNumber}周 · 今天休息或补课`;
 }
 
+function learningPlanRouteTasks(note) {
+  const plan = window.SHIJI_LEARNING_PLAN;
+  if (!plan || !isBuiltInLearningPlan(note)) return [];
+  const wantedDays = planRouteDays(note);
+  const dayOffsets = { '周一':0, '周二':1, '周三':2, '周四':3, '周五':4, '周六':5, '周日':6 };
+  const start = new Date(`${plan.start}T00:00:00`);
+  return plan.weeks.flatMap(week => week.tasks
+    .filter(task => wantedDays.some(day => task.date.includes(day)))
+    .map((task, taskIndex) => {
+      const dayName = Object.keys(dayOffsets).find(day => task.date.includes(day));
+      const taskDate = new Date(start);
+      taskDate.setDate(start.getDate() + (week.week - 1) * 7 + dayOffsets[dayName]);
+      return { weekNumber:week.week, task, taskIndex, key:planTaskKey(note, week.week, taskIndex), date:taskDate, dateKey:localDateKey(taskDate) };
+    }));
+}
+
+function learningPlanDisplayInfo(note, date = new Date()) {
+  if (!isBuiltInLearningPlan(note)) return { action:note.nextAction, meta:'' };
+  const plan = window.SHIJI_LEARNING_PLAN;
+  const todayKey = localDateKey(date);
+  if (!plan || todayKey < plan.start) return { action:learningTaskForToday(note, date), meta:'计划开始前' };
+  const completed = new Set(completedTaskKeys(note));
+  const next = learningPlanRouteTasks(note).find(item => !completed.has(item.key));
+  if (!next) return { action:'40周路线已全部完成', meta:'已完成全部80项任务' };
+  const label = next.dateKey < todayKey ? '待补任务' : next.dateKey === todayKey ? '今天任务' : '下一项';
+  return { action:`${label} · 第${next.weekNumber}周 · ${next.task.task}`, meta:`${next.task.date}${next.dateKey > todayKey ? ' · 可提前完成' : ''}`, task:next };
+}
+
 function categoryMatches(note) {
   if (state.category === 'all') return true;
   if (state.category === '其他') return !['学习','工作','生活'].includes(note.category);
@@ -225,14 +253,14 @@ function renderPlans() {
   const completed = scheduled.length - pending;
   const resting = plans.length - scheduled.length;
   $('#planProgress').textContent = `${pending} 项今日待完成 · ${completed} 项今日已完成${resting ? ` · ${resting} 项非训练日` : ''}`;
-  $('#planList').innerHTML = plans.map(note => { const scheduled = isPlanScheduledToday(note); const action = learningTaskForToday(note); const taskControl = scheduled
+  $('#planList').innerHTML = plans.map(note => { const scheduled = isPlanScheduledToday(note); const display = learningPlanDisplayInfo(note); const action = display.action || learningTaskForToday(note); const todayTask = learningPlanTaskInfo(note); const directCheck = scheduled && (!isBuiltInLearningPlan(note) || (todayTask && display.task?.key === todayTask.key)); const taskControl = directCheck
     ? `<label class="plan-check-wrap" title="完成今天计划"><input class="plan-check" data-id="${note.id}" type="checkbox" ${isPlanDone(note) ? 'checked' : ''}><span>完成</span></label>`
     : isBuiltInLearningPlan(note)
       ? `<button class="plan-task-picker" data-id="${note.id}" type="button" aria-label="打开完整计划勾选任务" title="打开完整计划勾选任务"><span>☑</span><small>勾选任务</small></button>`
       : '<span class="plan-rest-label">休息日</span>';
-    return `<article class="plan-item ${isPlanDone(note) ? 'done' : ''} ${scheduled ? '' : 'upcoming'}" data-id="${note.id}">
+    return `<article class="plan-item ${!isBuiltInLearningPlan(note) && isPlanDone(note) ? 'done' : ''} ${scheduled ? '' : 'upcoming'}" data-id="${note.id}">
     ${taskControl}
-    <button class="plan-open" data-id="${note.id}" type="button"><strong>${note.planTime ? `<time>${escapeHTML(note.planTime)}</time>` : ''}${escapeHTML(action)}</strong><small>${recurrenceLabel(note)}${scheduled ? ' · 今天' : ' · 非训练日'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small>${isBuiltInLearningPlan(note) ? '<span class="plan-all-hint">打开后可勾选具体任务 →</span>' : ''}</button>
+    <button class="plan-open" data-id="${note.id}" type="button"><strong>${note.planTime ? `<time>${escapeHTML(note.planTime)}</time>` : ''}${escapeHTML(action)}</strong><small>${isBuiltInLearningPlan(note) && display.meta ? `${escapeHTML(display.meta)} · ` : ''}${recurrenceLabel(note)}${scheduled ? ' · 今天' : ' · 非训练日'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small>${isBuiltInLearningPlan(note) ? '<span class="plan-all-hint">打开后可勾选具体任务 →</span>' : ''}</button>
   </article>`; }).join('');
 }
 
@@ -474,7 +502,8 @@ async function openDetail(id) {
   $('#detailStudyBtn').hidden = !isBuiltInLearningPlan(note);
   $('#detailEditBtn').hidden = isBuiltInLearningPlan(note);
   const mainDetails = note.category === '学习' && hasLearningData(note) ? learningDetail(note) : `${detailSection('问题 / 背景', note.problem)}${detailSection('过程 / 思路', note.process)}${detailSection('结果 / 结论', note.result)}`;
-  const currentPlan = note.nextAction ? `<section class="detail-plan ${isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成' : '今天的安排'}</span><strong>${escapeHTML(learningTaskForToday(note))}</strong><small>${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : '';
+  const planDisplay = learningPlanDisplayInfo(note);
+  const currentPlan = note.nextAction ? `<section class="detail-plan ${!isBuiltInLearningPlan(note) && isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成 · 下面是下一项' : (isBuiltInLearningPlan(note) ? '当前需要完成' : '今天的安排')}</span><strong>${escapeHTML(planDisplay.action || learningTaskForToday(note))}</strong><small>${planDisplay.meta ? `${escapeHTML(planDisplay.meta)} · ` : ''}${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : '';
   const fullPlan = fullLearningPlanDetail(note);
   $('#detailContent').innerHTML = `
     <div class="detail-meta"><span>创建于 ${formatDetailDate(note.createdAt)}</span>${note.pinned ? '<span>◆ 已置顶</span>' : ''}</div>
@@ -970,7 +999,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=17').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=18').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

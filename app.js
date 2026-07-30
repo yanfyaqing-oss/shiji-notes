@@ -33,6 +33,8 @@ let photoDbPromise;
 let photoDraft = [];
 let removedPhotoIds = new Set();
 let cardPhotoUrls = [];
+let detailNoteId = null;
+let detailPhotoUrls = [];
 
 function openPhotoDb() {
   if (photoDbPromise) return photoDbPromise;
@@ -179,6 +181,59 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([array], { type });
 }
 
+function formatDetailDate(date) {
+  return new Date(date).toLocaleString('zh-CN', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function detailSection(title, content) {
+  return `<section class="detail-section"><h3>${title}</h3><p class="${content ? '' : 'detail-empty'}">${content ? escapeHTML(content) : '尚未填写'}</p></section>`;
+}
+
+function cleanupDetailPhotos() {
+  detailPhotoUrls.forEach(URL.revokeObjectURL);
+  detailPhotoUrls = [];
+  detailNoteId = null;
+}
+
+async function openDetail(id) {
+  const note = state.notes.find(item => item.id === id);
+  if (!note) return;
+  cleanupDetailPhotos();
+  detailNoteId = id;
+  const meta = statusMeta[note.status] || statusMeta.open;
+  $('#detailStatus').textContent = meta.label;
+  $('#detailStatus').className = `status-badge ${note.status || 'open'}`;
+  $('#detailCategory').textContent = note.category || '未分类';
+  $('#detailTitle').textContent = note.title;
+  $('#detailTime').textContent = `更新于 ${formatDetailDate(note.updatedAt)}`;
+  $('#detailContent').innerHTML = `
+    <div class="detail-meta"><span>创建于 ${formatDetailDate(note.createdAt)}</span>${note.pinned ? '<span>◆ 已置顶</span>' : ''}</div>
+    ${detailSection('问题 / 背景', note.problem)}
+    ${detailSection('过程 / 思路', note.process)}
+    ${detailSection('结果 / 结论', note.result)}
+    ${(note.tags || []).length ? `<div class="detail-tags">${note.tags.map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
+    ${note.photoCount ? '<section class="detail-photos-section"><h3>图片附件</h3><div id="detailPhotos" class="detail-photos"><span class="detail-photo-loading">正在读取图片…</span></div></section>' : ''}`;
+  $('#detailDialog').showModal();
+
+  if (!note.photoCount) return;
+  try {
+    const photos = await getNotePhotos(id);
+    if (detailNoteId !== id || !$('#detailDialog').open) return;
+    const photoContainer = $('#detailPhotos');
+    if (!photos.length) {
+      photoContainer.innerHTML = '<span class="detail-photo-loading">图片正在同步，请稍后再打开</span>';
+      return;
+    }
+    photoContainer.innerHTML = photos.map((photo, index) => {
+      const url = URL.createObjectURL(photo.blob);
+      detailPhotoUrls.push(url);
+      return `<button class="detail-photo-button" type="button" aria-label="查看第 ${index + 1} 张图片"><img src="${url}" alt="${escapeHTML(note.title)}的第 ${index + 1} 张图片"></button>`;
+    }).join('');
+  } catch {
+    if ($('#detailPhotos')) $('#detailPhotos').innerHTML = '<span class="detail-photo-loading">图片暂时无法读取，文字内容不受影响</span>';
+  }
+}
+
 function render() {
   const q = state.query.toLocaleLowerCase();
   const visible = state.notes.filter(note => {
@@ -195,7 +250,7 @@ function render() {
       ${note.photoCount ? `<div class="card-photo" hidden><img alt="${escapeHTML(note.title)}的图片"><span>📷 ${note.photoCount}</span></div>` : ''}
       <p class="card-excerpt">${escapeHTML(excerpt(note))}</p>
       <div class="tags">${(note.tags || []).slice(0,4).map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>
-      <footer class="card-footer"><span>${formatDate(note.updatedAt)}</span><span class="card-actions"><button class="mini-btn pin-btn" data-id="${note.id}" title="${note.pinned ? '取消置顶' : '置顶'}" aria-label="${note.pinned ? '取消置顶' : '置顶'}">${note.pinned ? '◆' : '◇'}</button><button class="mini-btn edit-btn" data-id="${note.id}" title="编辑" aria-label="编辑">✎</button></span></footer>
+      <footer class="card-footer"><span>${formatDate(note.updatedAt)}</span><span class="card-actions"><button class="mini-btn pin-btn" data-id="${note.id}" title="${note.pinned ? '取消置顶' : '置顶'}" aria-label="${note.pinned ? '取消置顶' : '置顶'}">${note.pinned ? '◆' : '◇'}</button><button class="mini-btn view-btn" data-id="${note.id}" type="button">查看</button><button class="mini-btn edit-btn" data-id="${note.id}" title="编辑" aria-label="编辑">✎</button></span></footer>
     </article>`).join('');
 
   $('#totalCount').textContent = state.notes.length;
@@ -376,13 +431,29 @@ $('#photoPreview').addEventListener('click', event => {
 });
 $('#imageDialogClose').addEventListener('click', () => $('#imageDialog').close());
 $('#imageDialog').addEventListener('click', event => { if (event.target === $('#imageDialog')) $('#imageDialog').close(); });
-$('#notesGrid').addEventListener('click', event => {
-  const pin = event.target.closest('.pin-btn'); const edit = event.target.closest('.edit-btn');
-  if (pin) { event.stopPropagation(); const note = state.notes.find(n => n.id === pin.dataset.id); note.pinned = !note.pinned; note.updatedAt = new Date().toISOString(); save(); render(); toast(note.pinned ? '已置顶' : '已取消置顶'); return; }
-  if (edit) { event.stopPropagation(); openForm(edit.dataset.id); return; }
-  const card = event.target.closest('.note-card'); if (card) openForm(card.dataset.id);
+$('#detailCloseBtn').addEventListener('click', () => $('#detailDialog').close());
+$('#detailDoneBtn').addEventListener('click', () => $('#detailDialog').close());
+$('#detailDialog').addEventListener('close', cleanupDetailPhotos);
+$('#detailDialog').addEventListener('click', event => { if (event.target === $('#detailDialog')) $('#detailDialog').close(); });
+$('#detailContent').addEventListener('click', event => {
+  const button = event.target.closest('.detail-photo-button');
+  if (!button) return;
+  $('#imageDialogImg').src = button.querySelector('img').src;
+  $('#imageDialog').showModal();
 });
-$('#notesGrid').addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('note-card')) openForm(event.target.dataset.id); });
+$('#detailEditBtn').addEventListener('click', () => {
+  const id = detailNoteId;
+  $('#detailDialog').close();
+  if (id) openForm(id);
+});
+$('#notesGrid').addEventListener('click', event => {
+  const pin = event.target.closest('.pin-btn'); const view = event.target.closest('.view-btn'); const edit = event.target.closest('.edit-btn');
+  if (pin) { event.stopPropagation(); const note = state.notes.find(n => n.id === pin.dataset.id); note.pinned = !note.pinned; note.updatedAt = new Date().toISOString(); save(); render(); toast(note.pinned ? '已置顶' : '已取消置顶'); return; }
+  if (view) { event.stopPropagation(); openDetail(view.dataset.id); return; }
+  if (edit) { event.stopPropagation(); openForm(edit.dataset.id); return; }
+  const card = event.target.closest('.note-card'); if (card) openDetail(card.dataset.id);
+});
+$('#notesGrid').addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('note-card')) { event.preventDefault(); openDetail(event.target.dataset.id); } });
 $('#statusFilters').addEventListener('click', event => { const btn = event.target.closest('.filter'); if (!btn) return; state.filter = btn.dataset.status; document.querySelectorAll('.filter').forEach(x => x.classList.toggle('active', x === btn)); render(); });
 $('#categoryFilter').addEventListener('change', event => { state.category = event.target.value; render(); });
 $('#searchInput').addEventListener('input', event => { state.query = event.target.value.trim(); render(); });

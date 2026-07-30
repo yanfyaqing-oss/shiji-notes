@@ -39,6 +39,21 @@
         </div>
       </section>
 
+      <section class="quick-capture" aria-labelledby="quickTitle">
+        <div class="quick-copy"><span>快速记录</span><h2 id="quickTitle">先记下来，稍后再整理</h2></div>
+        <div class="quick-entry">
+          <input id="quickInput" maxlength="80" placeholder="现在遇到了什么？">
+          <button class="voice-btn quick-voice" type="button" data-voice-target="quickInput" aria-label="语音快速记录" title="语音输入">🎙 <span>语音</span></button>
+          <button id="quickCameraBtn" class="secondary-btn" type="button">📷</button>
+          <button id="quickSaveBtn" class="primary-btn" type="button">保存</button>
+        </div>
+      </section>
+
+      <section id="planSection" class="plan-section" aria-labelledby="planTitle" hidden>
+        <div class="plan-heading"><div><span>下一步</span><h2 id="planTitle">我的计划</h2></div><small id="planProgress"></small></div>
+        <div id="planList" class="plan-list"></div>
+      </section>
+
       <section class="toolbar" aria-label="搜索和筛选">
         <label class="search-box">
           <span aria-hidden="true">⌕</span>
@@ -51,7 +66,7 @@
           <button class="filter" type="button" data-status="solved"><span class="dot green"></span>已解决</button>
           <button class="filter" type="button" data-status="archived">已归档</button>
         </div>
-        <select id="categoryFilter" aria-label="按分类筛选">
+        <select id="categoryFilter" aria-label="按分类筛选" hidden>
           <option value="all">全部分类</option>
         </select>
       </section>
@@ -59,6 +74,7 @@
       <section class="notes-section">
         <div class="section-heading">
           <h2 id="listTitle">全部记录</h2>
+          <div id="categoryChips" class="category-chips" aria-label="记录分类"></div>
           <span id="resultCount">0 条</span>
         </div>
         <div id="notesGrid" class="notes-grid"></div>
@@ -106,6 +122,8 @@
           <datalist id="categoryOptions"><option value="学习"><option value="工作"><option value="生活"><option value="灵感"></datalist>
           <label class="field"><span>状态</span><select id="statusInput"><option value="open">待解决</option><option value="solved">已解决</option><option value="archived">已归档</option></select></label>
         </div>
+        <button id="formMoreBtn" class="form-more-btn" type="button" aria-expanded="false">＋ 补充问题、过程、结果和计划</button>
+        <div id="formDetails" class="form-details" hidden>
         <label class="field full"><span class="field-label"><span>问题 / 背景</span><button class="voice-btn" type="button" data-voice-target="problemInput" aria-label="语音输入问题和背景" title="语音输入">🎙 <span>语音</span></button></span><textarea id="problemInput" rows="4" placeholder="遇到了什么？当时的背景是什么？"></textarea></label>
         <label class="field full"><span class="field-label"><span>过程 / 思路</span><button class="voice-btn" type="button" data-voice-target="processInput" aria-label="语音输入过程和思路" title="语音输入">🎙 <span>语音</span></button></span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
         <label class="field full"><span class="field-label"><span>结果 / 结论</span><button class="voice-btn" type="button" data-voice-target="resultInput" aria-label="语音输入结果和结论" title="语音输入">🎙 <span>语音</span></button></span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
@@ -122,6 +140,18 @@
           <input id="galleryInput" type="file" accept="image/*" multiple hidden>
           <div id="photoPreview" class="photo-preview" aria-live="polite"></div>
         </section>
+        <section class="plan-field" aria-labelledby="planFieldTitle">
+          <label class="plan-toggle"><input id="planEnabledInput" type="checkbox"><span><strong id="planFieldTitle">加入“我的计划”</strong><small>为这条记录安排一个明确的下一步</small></span></label>
+          <div id="planFields" class="plan-fields" hidden>
+            <label class="field full"><span>下一步做什么</span><input id="nextActionInput" maxlength="100" placeholder="例如：创建一个测试项目"></label>
+            <div class="form-row">
+              <label class="field"><span>安排在</span><select id="actionPeriodInput"><option value="today">今天</option><option value="week">本周</option><option value="later">以后</option></select></label>
+              <label class="field"><span>日期 <small>可不填</small></span><input id="dueDateInput" type="date"></label>
+            </div>
+            <label class="plan-complete"><input id="actionDoneInput" type="checkbox"> 这项计划已经完成</label>
+          </div>
+        </section>
+        </div>
       </div>
       <div class="dialog-actions">
         <button id="deleteBtn" class="danger-btn" type="button" hidden>删除</button>

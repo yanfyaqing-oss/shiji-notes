@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'shiji-notes-v1';
 const THEME_KEY = 'shiji-theme';
+const DRAFT_KEY = 'shiji-note-draft-v1';
 
 const $ = (selector) => document.querySelector(selector);
 const state = { notes: [], filter: 'all', category: 'all', query: '', editingId: null };
@@ -25,6 +26,28 @@ function formatDate(date) {
 }
 function startOfWeek() { const d = new Date(); const day = d.getDay() || 7; d.setHours(0,0,0,0); d.setDate(d.getDate() - day + 1); return d; }
 function excerpt(note) { return note.result || note.problem || note.process || '还没有补充详细内容。'; }
+function autoCategory(value = '') {
+  const text = value.toLocaleLowerCase();
+  if (/学习|课程|阅读|读书|考试|知识|练习|unity|教程/.test(text)) return '学习';
+  if (/生活|家庭|健康|运动|旅行|家务|日常|购物/.test(text)) return '生活';
+  return '工作';
+}
+
+function categoryMatches(note) {
+  if (state.category === 'all') return true;
+  if (state.category === '其他') return !['学习','工作','生活'].includes(note.category);
+  return note.category === state.category;
+}
+
+function setFormDetails(expanded) {
+  $('#formDetails').hidden = !expanded;
+  $('#formMoreBtn').setAttribute('aria-expanded', String(expanded));
+  $('#formMoreBtn').textContent = expanded ? '－ 收起详细内容' : '＋ 补充问题、过程、结果和计划';
+}
+
+function setPlanFields(enabled) {
+  $('#planFields').hidden = !enabled;
+}
 
 function weeklyGroup(note) {
   const text = [note.category, note.title, ...(note.tags || [])].join(' ').toLocaleLowerCase();
@@ -43,7 +66,7 @@ function openWeeklySummary() {
   ];
   const solved = notes.filter(note => note.status === 'solved').length;
   const photos = notes.reduce((sum, note) => sum + (Number(note.photoCount) || 0), 0);
-  const pending = notes.filter(note => note.status === 'open').slice(0, 3);
+  const pending = notes.filter(note => note.nextAction && !note.actionDone).slice(0, 3);
   const rangeEnd = new Date(weekStart); rangeEnd.setDate(rangeEnd.getDate() + 6);
 
   $('#summaryContent').innerHTML = `
@@ -56,6 +79,24 @@ function openWeeklySummary() {
     ${notes.length ? `<section class="summary-next"><h3>下周可以继续</h3>${pending.length ? `<ul>${pending.map(note => `<li>${escapeHTML(note.title)}</li>`).join('')}</ul>` : '<p>本周记录都已解决，可以挑一项最有价值的经验继续巩固。</p>'}</section>` : ''}`;
   $('#settingsDialog').close();
   $('#summaryDialog').showModal();
+}
+
+function renderCategoryChips() {
+  const items = ['all','学习','工作','生活','其他'];
+  $('#categoryChips').innerHTML = items.map(value => `<button class="category-chip ${state.category === value ? 'active' : ''}" type="button" data-category="${value}">${value === 'all' ? '全部' : value}</button>`).join('');
+}
+
+function renderPlans() {
+  const plans = state.notes.filter(note => note.nextAction).sort((a,b) => Number(a.actionDone) - Number(b.actionDone) || ['today','week','later'].indexOf(a.actionPeriod || 'week') - ['today','week','later'].indexOf(b.actionPeriod || 'week') || new Date(b.updatedAt) - new Date(a.updatedAt));
+  $('#planSection').hidden = plans.length === 0;
+  if (!plans.length) return;
+  const pending = plans.filter(note => !note.actionDone).length;
+  $('#planProgress').textContent = `${pending} 项待完成 · ${plans.length - pending} 项已完成`;
+  const periodLabels = { today:'今天', week:'本周', later:'以后' };
+  $('#planList').innerHTML = plans.map(note => `<article class="plan-item ${note.actionDone ? 'done' : ''}" data-id="${note.id}">
+    <label><input class="plan-check" data-id="${note.id}" type="checkbox" ${note.actionDone ? 'checked' : ''}><span></span></label>
+    <button class="plan-open" data-id="${note.id}" type="button"><strong>${escapeHTML(note.nextAction)}</strong><small>${periodLabels[note.actionPeriod] || '本周'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small></button>
+  </article>`).join('');
 }
 
 const PHOTO_DB = 'shiji-media-v1';
@@ -243,6 +284,7 @@ async function openDetail(id) {
     ${detailSection('问题 / 背景', note.problem)}
     ${detailSection('过程 / 思路', note.process)}
     ${detailSection('结果 / 结论', note.result)}
+    ${note.nextAction ? `<section class="detail-plan ${note.actionDone ? 'done' : ''}"><span>${note.actionDone ? '✓ 已完成' : '下一步计划'}</span><strong>${escapeHTML(note.nextAction)}</strong><small>${({today:'今天',week:'本周',later:'以后'})[note.actionPeriod] || '本周'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : ''}
     ${(note.tags || []).length ? `<div class="detail-tags">${note.tags.map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
     ${note.photoCount ? '<section class="detail-photos-section"><h3>图片附件</h3><div id="detailPhotos" class="detail-photos"><span class="detail-photo-loading">正在读取图片…</span></div></section>' : ''}`;
   $('#detailDialog').showModal();
@@ -270,7 +312,7 @@ function render() {
   const q = state.query.toLocaleLowerCase();
   const visible = state.notes.filter(note => {
     const matchesStatus = state.filter === 'all' || note.status === state.filter;
-    const matchesCategory = state.category === 'all' || note.category === state.category;
+    const matchesCategory = categoryMatches(note);
     const haystack = [note.title, note.problem, note.process, note.result, note.category, ...(note.tags || [])].join(' ').toLocaleLowerCase();
     return matchesStatus && matchesCategory && (!q || haystack.includes(q));
   }).sort((a,b) => Number(b.pinned) - Number(a.pinned) || new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -293,6 +335,8 @@ function render() {
   $('#emptyState').hidden = visible.length > 0;
   $('#emptyText').textContent = state.notes.length ? '没有找到符合条件的记录，换个关键词或筛选试试。' : '记下第一个问题，让经验开始积累。';
   renderCategories();
+  renderCategoryChips();
+  renderPlans();
   hydrateCardPhotos(visible);
 }
 
@@ -301,7 +345,6 @@ function renderCategories() {
   const categories = [...new Set(state.notes.map(n => n.category).filter(Boolean))].sort((a,b) => a.localeCompare(b,'zh-CN'));
   select.innerHTML = '<option value="all">全部分类</option>' + categories.map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
   select.value = categories.includes(current) ? current : 'all';
-  if (!categories.includes(current)) state.category = 'all';
 }
 
 async function openForm(id = null) {
@@ -319,8 +362,35 @@ async function openForm(id = null) {
   $('#processInput').value = note?.process || '';
   $('#resultInput').value = note?.result || '';
   $('#tagsInput').value = (note?.tags || []).join(' ');
+  $('#planEnabledInput').checked = Boolean(note?.nextAction);
+  $('#nextActionInput').value = note?.nextAction || '';
+  $('#actionPeriodInput').value = note?.actionPeriod || 'week';
+  $('#dueDateInput').value = note?.dueDate || '';
+  $('#actionDoneInput').checked = Boolean(note?.actionDone);
+  setPlanFields($('#planEnabledInput').checked);
+  const hasDetails = Boolean(note && (note.problem || note.process || note.result || note.tags?.length || note.photoCount || note.nextAction));
+  setFormDetails(hasDetails);
   $('#deleteBtn').hidden = !note;
   $('#noteDialog').showModal();
+  try {
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    if (draft && (draft.editingId || null) === id) {
+      $('#titleInput').value = draft.title || $('#titleInput').value;
+      $('#categoryInput').value = draft.category || $('#categoryInput').value;
+      $('#statusInput').value = draft.status || $('#statusInput').value;
+      $('#problemInput').value = draft.problem || '';
+      $('#processInput').value = draft.process || '';
+      $('#resultInput').value = draft.result || '';
+      $('#tagsInput').value = draft.tags || '';
+      $('#planEnabledInput').checked = Boolean(draft.planEnabled);
+      $('#nextActionInput').value = draft.nextAction || '';
+      $('#actionPeriodInput').value = draft.actionPeriod || 'week';
+      $('#dueDateInput').value = draft.dueDate || '';
+      setPlanFields($('#planEnabledInput').checked);
+      if (draft.problem || draft.process || draft.result || draft.tags || draft.planEnabled) setFormDetails(true);
+      toast('已恢复上次未保存的草稿');
+    }
+  } catch { /* 无效草稿直接忽略。 */ }
   setTimeout(() => $('#titleInput').focus(), 50);
   if (note?.photoCount) {
     try {
@@ -339,6 +409,35 @@ function closeForm() {
   if (updatePendingReload) setTimeout(() => location.reload(), 50);
 }
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 2200); }
+
+function saveFormDraft() {
+  const draft = {
+    editingId: state.editingId,
+    title: $('#titleInput').value,
+    category: $('#categoryInput').value,
+    status: $('#statusInput').value,
+    problem: $('#problemInput').value,
+    process: $('#processInput').value,
+    result: $('#resultInput').value,
+    tags: $('#tagsInput').value,
+    planEnabled: $('#planEnabledInput').checked,
+    nextAction: $('#nextActionInput').value,
+    actionPeriod: $('#actionPeriodInput').value,
+    dueDate: $('#dueDateInput').value
+  };
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+async function saveQuickNote() {
+  const title = $('#quickInput').value.trim();
+  if (!title) { $('#quickInput').focus(); toast('先写一句要记录的内容'); return; }
+  const now = new Date().toISOString();
+  const note = { id:uid(), title, category:autoCategory(title), status:'open', problem:'', process:'', result:'', tags:[], photoCount:0, pinned:false, nextAction:'', actionPeriod:'week', dueDate:'', actionDone:false, createdAt:now, updatedAt:now };
+  state.notes.unshift(note);
+  $('#quickInput').value = '';
+  save(); render(); toast(`已快速记录，并归入“${note.category}”`);
+  window.cloudApi?.pushNote(note).catch(() => {});
+}
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let activeRecognition = null;
@@ -414,14 +513,16 @@ $('#noteForm').addEventListener('submit', async event => {
   event.preventDefault();
   const title = $('#titleInput').value.trim(); if (!title) { $('#titleInput').focus(); return; }
   const now = new Date().toISOString(); const old = state.notes.find(n => n.id === state.editingId);
-  const note = { id: old?.id || uid(), title, category: $('#categoryInput').value.trim() || '未分类', status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, createdAt: old?.createdAt || now, updatedAt: now };
+  const planEnabled = $('#planEnabledInput').checked;
+  const nextAction = planEnabled ? ($('#nextActionInput').value.trim() || `继续处理：${title}`) : '';
+  const note = { id: old?.id || uid(), title, category: $('#categoryInput').value.trim() || autoCategory(title), status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, nextAction, actionPeriod:planEnabled ? $('#actionPeriodInput').value : 'week', dueDate:planEnabled ? $('#dueDateInput').value : '', actionDone:planEnabled && $('#actionDoneInput').checked, createdAt: old?.createdAt || now, updatedAt: now };
   const submitButton = $('#noteForm button[type="submit"]');
   submitButton.disabled = true;
   submitButton.textContent = '正在保存…';
   try {
     await savePhotoDraft(note.id);
     if (old) state.notes = state.notes.map(n => n.id === old.id ? note : n); else state.notes.unshift(note);
-    save(); render(); closeForm(); toast(old ? '记录已更新' : '记录已保存');
+    localStorage.removeItem(DRAFT_KEY); save(); render(); closeForm(); toast(old ? '记录已更新' : '记录已保存');
     window.cloudApi?.pushNote(note).catch(() => {});
   } catch {
     toast('图片保存失败，请检查浏览器存储空间后重试');
@@ -478,6 +579,19 @@ $('#detailEditBtn').addEventListener('click', () => {
   $('#detailDialog').close();
   if (id) openForm(id);
 });
+$('#formMoreBtn').addEventListener('click', () => setFormDetails($('#formDetails').hidden));
+$('#planEnabledInput').addEventListener('change', event => { setPlanFields(event.target.checked); if (event.target.checked) $('#nextActionInput').focus(); });
+let draftSaveTimer;
+$('#noteForm').addEventListener('input', () => { clearTimeout(draftSaveTimer); draftSaveTimer = setTimeout(saveFormDraft, 350); });
+$('#quickSaveBtn').addEventListener('click', saveQuickNote);
+$('#quickInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); saveQuickNote(); } });
+$('#quickCameraBtn').addEventListener('click', async () => {
+  const quickTitle = $('#quickInput').value.trim();
+  await openForm();
+  if (quickTitle) { $('#titleInput').value = quickTitle; $('#categoryInput').value = autoCategory(quickTitle); $('#quickInput').value = ''; }
+  setFormDetails(true);
+  setTimeout(() => $('#cameraInput').click(), 80);
+});
 $('#weeklySummaryBtn').addEventListener('click', openWeeklySummary);
 $('#summaryCloseBtn').addEventListener('click', () => $('#summaryDialog').close());
 $('#summaryDoneBtn').addEventListener('click', () => $('#summaryDialog').close());
@@ -490,6 +604,13 @@ $('#notesGrid').addEventListener('click', event => {
   const card = event.target.closest('.note-card'); if (card) openDetail(card.dataset.id);
 });
 $('#notesGrid').addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('note-card')) { event.preventDefault(); openDetail(event.target.dataset.id); } });
+$('#categoryChips').addEventListener('click', event => { const button = event.target.closest('.category-chip'); if (!button) return; state.category = button.dataset.category; render(); });
+$('#planList').addEventListener('change', event => {
+  const check = event.target.closest('.plan-check'); if (!check) return;
+  const note = state.notes.find(item => item.id === check.dataset.id); if (!note) return;
+  note.actionDone = check.checked; note.updatedAt = new Date().toISOString(); save(); render(); toast(check.checked ? '计划已完成' : '已恢复到计划'); window.cloudApi?.pushNote(note).catch(() => {});
+});
+$('#planList').addEventListener('click', event => { const button = event.target.closest('.plan-open'); if (button) openDetail(button.dataset.id); });
 $('#statusFilters').addEventListener('click', event => { const btn = event.target.closest('.filter'); if (!btn) return; state.filter = btn.dataset.status; document.querySelectorAll('.filter').forEach(x => x.classList.toggle('active', x === btn)); render(); });
 $('#categoryFilter').addEventListener('change', event => { state.category = event.target.value; render(); });
 $('#searchInput').addEventListener('input', event => { state.query = event.target.value.trim(); render(); });

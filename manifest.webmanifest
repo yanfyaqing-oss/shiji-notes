@@ -1,0 +1,13 @@
+{
+  "name": "拾记 · 问题与结果",
+  "short_name": "拾记",
+  "description": "记录学习和工作中的问题、过程与结果",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f2ea",
+  "theme_color": "#f6f2ea",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

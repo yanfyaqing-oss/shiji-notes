@@ -168,8 +168,8 @@ function learningPlanDisplayInfo(note, date = new Date()) {
   if (!isBuiltInLearningPlan(note)) return { action:note.nextAction, meta:'' };
   const plan = window.SHIJI_LEARNING_PLAN;
   const todayKey = localDateKey(date);
-  if (!plan || todayKey < plan.start) return { action:learningTaskForToday(note, date), meta:'计划开始前' };
   const completed = new Set(completedTaskKeys(note));
+  if (!plan || (todayKey < plan.start && completed.size === 0)) return { action:learningTaskForToday(note, date), meta:'计划开始前' };
   const next = learningPlanRouteTasks(note).find(item => !completed.has(item.key));
   if (!next) return { action:'40周路线已全部完成', meta:'已完成全部80项任务' };
   const label = next.dateKey < todayKey ? '待补任务' : next.dateKey === todayKey ? '今天任务' : '下一项';
@@ -1039,7 +1039,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=22').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=23').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

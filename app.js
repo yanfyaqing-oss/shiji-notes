@@ -225,9 +225,14 @@ function renderPlans() {
   const completed = scheduled.length - pending;
   const resting = plans.length - scheduled.length;
   $('#planProgress').textContent = `${pending} 项今日待完成 · ${completed} 项今日已完成${resting ? ` · ${resting} 项非训练日` : ''}`;
-  $('#planList').innerHTML = plans.map(note => { const scheduled = isPlanScheduledToday(note); const action = learningTaskForToday(note); return `<article class="plan-item ${isPlanDone(note) ? 'done' : ''} ${scheduled ? '' : 'upcoming'}" data-id="${note.id}">
-    <label><input class="plan-check" data-id="${note.id}" type="checkbox" ${isPlanDone(note) ? 'checked' : ''} ${scheduled ? '' : 'disabled'}><span></span></label>
-    <button class="plan-open" data-id="${note.id}" type="button"><strong>${note.planTime ? `<time>${escapeHTML(note.planTime)}</time>` : ''}${escapeHTML(action)}</strong><small>${recurrenceLabel(note)}${scheduled ? ' · 今天' : ' · 非训练日'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small>${isBuiltInLearningPlan(note) ? '<span class="plan-all-hint">查看完整40周计划 →</span>' : ''}</button>
+  $('#planList').innerHTML = plans.map(note => { const scheduled = isPlanScheduledToday(note); const action = learningTaskForToday(note); const taskControl = scheduled
+    ? `<label class="plan-check-wrap" title="完成今天计划"><input class="plan-check" data-id="${note.id}" type="checkbox" ${isPlanDone(note) ? 'checked' : ''}><span>完成</span></label>`
+    : isBuiltInLearningPlan(note)
+      ? `<button class="plan-task-picker" data-id="${note.id}" type="button" aria-label="打开完整计划勾选任务" title="打开完整计划勾选任务"><span>☑</span><small>勾选任务</small></button>`
+      : '<span class="plan-rest-label">休息日</span>';
+    return `<article class="plan-item ${isPlanDone(note) ? 'done' : ''} ${scheduled ? '' : 'upcoming'}" data-id="${note.id}">
+    ${taskControl}
+    <button class="plan-open" data-id="${note.id}" type="button"><strong>${note.planTime ? `<time>${escapeHTML(note.planTime)}</time>` : ''}${escapeHTML(action)}</strong><small>${recurrenceLabel(note)}${scheduled ? ' · 今天' : ' · 非训练日'}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})}` : ''} · 来自“${escapeHTML(note.title)}”</small>${isBuiltInLearningPlan(note) ? '<span class="plan-all-hint">打开后可勾选具体任务 →</span>' : ''}</button>
   </article>`; }).join('');
 }
 
@@ -906,7 +911,7 @@ $('#planList').addEventListener('change', event => {
   else note.actionDone = check.checked;
   note.updatedAt = new Date().toISOString(); save(); render(); toast(check.checked ? '今天的计划已完成' : '已恢复到今天的计划'); window.cloudApi?.pushNote(note).catch(() => {});
 });
-$('#planList').addEventListener('click', event => { const button = event.target.closest('.plan-open'); if (button) openDetail(button.dataset.id); });
+$('#planList').addEventListener('click', event => { const button = event.target.closest('.plan-open, .plan-task-picker'); if (button) openDetail(button.dataset.id); });
 $('#todayDoneList').addEventListener('click', event => { const item = event.target.closest('.today-done-item'); if (item) openDetail(item.dataset.id); });
 $('#statusFilters').addEventListener('click', event => { const btn = event.target.closest('.filter'); if (!btn) return; state.filter = btn.dataset.status; document.querySelectorAll('.filter').forEach(x => x.classList.toggle('active', x === btn)); render(); });
 $('#categoryFilter').addEventListener('change', event => { state.category = event.target.value; render(); });
@@ -965,7 +970,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=16').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=17').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

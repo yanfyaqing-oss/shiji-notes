@@ -3,6 +3,7 @@ const THEME_KEY = 'shiji-theme';
 
 const $ = (selector) => document.querySelector(selector);
 const state = { notes: [], filter: 'all', category: 'all', query: '', editingId: null };
+let updatePendingReload = false;
 const statusMeta = {
   open: { label: '待解决', title: '待解决的记录' },
   solved: { label: '已解决', title: '已解决的记录' },
@@ -77,7 +78,11 @@ function openForm(id = null) {
   $('#noteDialog').showModal();
   setTimeout(() => $('#titleInput').focus(), 50);
 }
-function closeForm() { $('#noteDialog').close(); state.editingId = null; }
+function closeForm() {
+  $('#noteDialog').close();
+  state.editingId = null;
+  if (updatePendingReload) setTimeout(() => location.reload(), 50);
+}
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 2200); }
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -189,7 +194,25 @@ $('#importInput').addEventListener('change', async event => { const file=event.t
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredPrompt=event; $('#installBtn').disabled=false; $('#installBtn').textContent='安装应用'; });
 $('#installBtn').addEventListener('click', async () => { if(!deferredPrompt)return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; $('#installBtn').disabled=true; $('#installBtn').textContent='已处理安装请求'; });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js');
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  let reloadingForUpdate = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    if ($('#noteDialog').open) {
+      updatePendingReload = true;
+      toast('新版本已准备好，保存或关闭记录后会自动更新');
+    } else {
+      location.reload();
+    }
+  });
+  navigator.serviceWorker.register('./sw.js').then(registration => {
+    registration.update();
+    setInterval(() => registration.update(), 60 * 60 * 1000);
+  }).catch(() => {
+    // 离线或浏览器暂时无法注册时，核心记事功能仍可继续使用。
+  });
+}
 
 $('#todayText').textContent = new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
 load(); render();

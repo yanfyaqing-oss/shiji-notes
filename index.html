@@ -90,6 +90,18 @@
         <label class="field full"><span class="field-label"><span>过程 / 思路</span><button class="voice-btn" type="button" data-voice-target="processInput" aria-label="语音输入过程和思路" title="语音输入">🎙 <span>语音</span></button></span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
         <label class="field full"><span class="field-label"><span>结果 / 结论</span><button class="voice-btn" type="button" data-voice-target="resultInput" aria-label="语音输入结果和结论" title="语音输入">🎙 <span>语音</span></button></span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
         <label class="field full"><span>标签 <small>用空格或逗号分隔</small></span><input id="tagsInput" maxlength="100" placeholder="例如：Unity  性能优化"></label>
+        <section class="photo-field" aria-labelledby="photoLabel">
+          <div class="photo-head">
+            <div><strong id="photoLabel">图片附件</strong><small id="photoCount">0 / 5 张 · 自动压缩并保存在当前设备</small></div>
+            <div class="photo-actions">
+              <button id="cameraBtn" class="photo-add-btn" type="button">📷 拍照</button>
+              <button id="galleryBtn" class="photo-add-btn" type="button">▧ 相册</button>
+            </div>
+          </div>
+          <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+          <input id="galleryInput" type="file" accept="image/*" multiple hidden>
+          <div id="photoPreview" class="photo-preview" aria-live="polite"></div>
+        </section>
       </div>
       <div class="dialog-actions">
         <button id="deleteBtn" class="danger-btn" type="button" hidden>删除</button>
@@ -108,6 +120,11 @@
       <div class="setting-item"><div><strong>安装到桌面</strong><p>像普通应用一样打开，并支持离线使用。</p></div><button id="installBtn" class="secondary-btn" type="button" disabled>等待浏览器支持</button></div>
       <p class="storage-note">记录默认只保存在当前浏览器中。请定期导出备份，换设备时先导出再导入。</p>
     </div>
+  </dialog>
+
+  <dialog id="imageDialog" class="image-dialog">
+    <button id="imageDialogClose" class="image-close" type="button" aria-label="关闭图片">×</button>
+    <img id="imageDialogImg" alt="笔记图片大图">
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

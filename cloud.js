@@ -191,11 +191,11 @@
       }
       for (const row of remote.values()) await pullNote(row);
 
-      // The two learning routes are part of the app itself. If an older cloud
-      // state is missing one (or contains an old deletion marker), restore it
-      // without touching the user's daily notes or task progress.
-      const restoredPlans = ensureBuiltInLearningPlans();
-      for (const planNote of restoredPlans) await pushNote(planNote);
+      // The two learning routes are part of the app itself. Restore a missing
+      // route or repair old rows whose plan fields were cleared, while keeping
+      // the user's daily notes and completed task keys intact.
+      const repairedPlans = ensureBuiltInLearningPlans();
+      for (const planNote of repairedPlans) await pushNote(planNote);
 
       save(); render();
       const now = new Date().toISOString();

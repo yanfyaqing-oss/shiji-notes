@@ -66,19 +66,33 @@ function ensureBuiltInLearningPlans() {
       recurrence:'spine_weekend', planTime:'20:30', tags:['Spine','学习计划','40周计划']
     }
   ];
-  const restored = [];
+  const repaired = [];
   for (const template of templates) {
-    if (state.notes.some(note => note.id === template.id)) continue;
+    const existing = state.notes.find(note => note.id === template.id);
+    if (existing) {
+      let changed = false;
+      const required = { title:template.title, category:'学习', nextAction:template.nextAction, recurrence:template.recurrence, planTime:template.planTime };
+      for (const [key, value] of Object.entries(required)) {
+        if (existing[key] === value) continue;
+        existing[key] = value;
+        changed = true;
+      }
+      if (!Array.isArray(existing.completedTasks)) { existing.completedTasks = []; changed = true; }
+      const tags = [...new Set([...(Array.isArray(existing.tags) ? existing.tags : []), ...template.tags])];
+      if (JSON.stringify(tags) !== JSON.stringify(existing.tags || [])) { existing.tags = tags; changed = true; }
+      if (changed) { existing.updatedAt = now; repaired.push(existing); }
+      continue;
+    }
     const note = {
       ...template, category:'学习', status:'open', problem:'', process:'', result:'', learningData:{},
       photoCount:0, pinned:false, actionPeriod:'week', dueDate:'', actionDone:false,
       lastCompletedDate:'', completedTasks:[], createdAt:now, updatedAt:now
     };
     state.notes.push(note);
-    restored.push(note);
+    repaired.push(note);
   }
-  if (restored.length) save();
-  return restored;
+  if (repaired.length) save();
+  return repaired;
 }
 function planRouteDays(note) { return note.id === 'learning-plan-u3d' ? ['周二','周四'] : ['周六','周日']; }
 function planTaskKey(note, weekNumber, taskIndex) { return `${note.id === 'learning-plan-u3d' ? 'u3d' : 'spine'}-w${weekNumber}-t${taskIndex + 1}`; }
@@ -1025,7 +1039,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=19').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=20').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

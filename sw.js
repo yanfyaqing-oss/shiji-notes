@@ -1,5 +1,5 @@
-const CACHE = 'shiji-v19';
-const ASSETS = ['./','./index.html','./styles.css?v=19','./learning-plan.js?v=19','./app.js?v=19','./cloud.js?v=19','./manifest.webmanifest','./icon.svg'];
+const CACHE = 'shiji-v20';
+const ASSETS = ['./','./index.html','./styles.css?v=20','./learning-plan.js?v=20','./app.js?v=20','./cloud.js?v=20','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', event => { if (event.request.method !== 'GET') return; event.respondWith(fetch(event.request).then(response => { const copy=response.clone(); caches.open(CACHE).then(cache=>cache.put(event.request,copy)); return response; }).catch(()=>caches.match(event.request).then(hit=>hit||caches.match('./index.html')))); });

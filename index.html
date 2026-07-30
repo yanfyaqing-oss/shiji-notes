@@ -80,15 +80,15 @@
         <button class="close-btn" value="cancel" type="button" data-close aria-label="关闭">×</button>
       </div>
       <div class="form-body">
-        <label class="field full"><span>标题 <em>*</em></span><input id="titleInput" maxlength="80" required placeholder="一句话描述这次记录"></label>
+        <label class="field full"><span class="field-label"><span>标题 <em>*</em></span><button class="voice-btn" type="button" data-voice-target="titleInput" aria-label="语音输入标题" title="语音输入">🎙 <span>语音</span></button></span><input id="titleInput" maxlength="80" required placeholder="一句话描述这次记录"></label>
         <div class="form-row">
           <label class="field"><span>分类</span><input id="categoryInput" list="categoryOptions" maxlength="20" placeholder="例如：工作"></label>
           <datalist id="categoryOptions"><option value="学习"><option value="工作"><option value="生活"><option value="灵感"></datalist>
           <label class="field"><span>状态</span><select id="statusInput"><option value="open">待解决</option><option value="solved">已解决</option><option value="archived">已归档</option></select></label>
         </div>
-        <label class="field full"><span>问题 / 背景</span><textarea id="problemInput" rows="4" placeholder="遇到了什么？当时的背景是什么？"></textarea></label>
-        <label class="field full"><span>过程 / 思路</span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
-        <label class="field full"><span>结果 / 结论</span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
+        <label class="field full"><span class="field-label"><span>问题 / 背景</span><button class="voice-btn" type="button" data-voice-target="problemInput" aria-label="语音输入问题和背景" title="语音输入">🎙 <span>语音</span></button></span><textarea id="problemInput" rows="4" placeholder="遇到了什么？当时的背景是什么？"></textarea></label>
+        <label class="field full"><span class="field-label"><span>过程 / 思路</span><button class="voice-btn" type="button" data-voice-target="processInput" aria-label="语音输入过程和思路" title="语音输入">🎙 <span>语音</span></button></span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
+        <label class="field full"><span class="field-label"><span>结果 / 结论</span><button class="voice-btn" type="button" data-voice-target="resultInput" aria-label="语音输入结果和结论" title="语音输入">🎙 <span>语音</span></button></span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
         <label class="field full"><span>标签 <small>用空格或逗号分隔</small></span><input id="tagsInput" maxlength="100" placeholder="例如：Unity  性能优化"></label>
       </div>
       <div class="dialog-actions">

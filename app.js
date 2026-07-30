@@ -80,6 +80,76 @@ function openForm(id = null) {
 function closeForm() { $('#noteDialog').close(); state.editingId = null; }
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 2200); }
 
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRecognition = null;
+let activeVoiceButton = null;
+
+function finishVoiceInput() {
+  activeVoiceButton?.classList.remove('listening');
+  activeVoiceButton?.setAttribute('aria-pressed', 'false');
+  activeRecognition = null;
+  activeVoiceButton = null;
+}
+
+function startVoiceInput(button) {
+  if (!SpeechRecognition) {
+    toast('当前浏览器不支持网页语音识别，可使用手机键盘上的麦克风');
+    return;
+  }
+  if (activeRecognition) {
+    activeRecognition.stop();
+    return;
+  }
+
+  const target = document.getElementById(button.dataset.voiceTarget);
+  if (!target) return;
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  activeRecognition = recognition;
+  activeVoiceButton = button;
+
+  recognition.onstart = () => {
+    button.classList.add('listening');
+    button.setAttribute('aria-pressed', 'true');
+    target.focus();
+    toast('正在听，请开始说话…再点麦克风可停止');
+  };
+  recognition.onresult = event => {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
+    }
+    transcript = transcript.trim();
+    if (!transcript) return;
+    const needsSpace = target.value && !/[\s，。！？；：]$/.test(target.value);
+    target.value += `${needsSpace ? ' ' : ''}${transcript}`;
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  recognition.onerror = event => {
+    const messages = {
+      'not-allowed': '没有麦克风权限，请在浏览器设置中允许访问麦克风',
+      'audio-capture': '没有检测到可用的麦克风',
+      'network': '语音识别需要网络连接，请检查网络后重试',
+      'no-speech': '没有听到语音，请靠近麦克风再试一次'
+    };
+    toast(messages[event.error] || '语音识别暂时不可用，请稍后重试');
+  };
+  recognition.onend = finishVoiceInput;
+  try { recognition.start(); }
+  catch { finishVoiceInput(); toast('语音识别启动失败，请稍后重试'); }
+}
+
+document.querySelectorAll('[data-voice-target]').forEach(button => {
+  button.setAttribute('aria-pressed', 'false');
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    startVoiceInput(button);
+  });
+});
+
 $('#noteForm').addEventListener('submit', event => {
   event.preventDefault();
   const title = $('#titleInput').value.trim(); if (!title) { $('#titleInput').focus(); return; }

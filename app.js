@@ -25,7 +25,12 @@ function formatDate(date) {
   return d.toLocaleDateString('zh-CN', { year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric', month:'short', day:'numeric' });
 }
 function startOfWeek() { const d = new Date(); const day = d.getDay() || 7; d.setHours(0,0,0,0); d.setDate(d.getDate() - day + 1); return d; }
-function excerpt(note) { return note.result || note.problem || note.process || '还没有补充详细内容。'; }
+function learningData(note) { return note.learningData && typeof note.learningData === 'object' ? note.learningData : {}; }
+function hasLearningData(note) { return Object.values(learningData(note)).some(value => String(value || '').trim()); }
+function excerpt(note) {
+  const learning = learningData(note);
+  return learning.completed || learning.understood || learning.problem || note.result || note.problem || note.process || '还没有补充详细内容。';
+}
 function autoCategory(value = '') {
   const text = value.toLocaleLowerCase();
   if (/学习|课程|阅读|读书|考试|知识|练习|unity|教程/.test(text)) return '学习';
@@ -35,6 +40,15 @@ function autoCategory(value = '') {
 function localDateKey(date = new Date()) {
   const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+function currentLearningWeek(date = new Date()) {
+  const plan = window.SHIJI_LEARNING_PLAN;
+  if (!plan) return '';
+  const start = new Date(`${plan.start}T00:00:00`); const current = new Date(date); current.setHours(0,0,0,0);
+  const week = Math.floor((current - start) / 604800000) + 1;
+  if (week < 1) return '准备阶段';
+  if (week > plan.weeks.length) return '40周计划已完成';
+  return `第${week}周`;
 }
 function isRecurringPlan(note) { return Boolean(note.recurrence); }
 function isPlanScheduledToday(note, date = new Date()) {
@@ -79,7 +93,34 @@ function categoryMatches(note) {
 function setFormDetails(expanded) {
   $('#formDetails').hidden = !expanded;
   $('#formMoreBtn').setAttribute('aria-expanded', String(expanded));
-  $('#formMoreBtn').textContent = expanded ? '－ 收起详细内容' : '＋ 补充问题、过程、结果和计划';
+  const learning = $('#categoryInput').value.trim() === '学习';
+  $('#formMoreBtn').textContent = expanded ? (learning ? '－ 收起学习记录' : '－ 收起详细内容') : (learning ? '＋ 填写今天的学习记录' : '＋ 补充问题、过程、结果和计划');
+}
+
+function setLearningTemplate(category = $('#categoryInput').value) {
+  const learning = category.trim() === '学习';
+  $('#learningNoteFields').hidden = !learning;
+  $('#standardNoteFields').hidden = learning;
+  $('#formTitle').textContent = learning ? (state.editingId ? '整理这次学习记录' : '记录今天的学习') : (state.editingId ? '继续补充这次经历' : '记录问题与结果');
+  if (learning) {
+    if (!$('#learningDateInput').value) $('#learningDateInput').value = localDateKey();
+    if (!$('#learningWeekInput').value) $('#learningWeekInput').value = currentLearningWeek();
+  }
+  setFormDetails(!$('#formDetails').hidden);
+}
+
+function readLearningForm() {
+  return {
+    date: $('#learningDateInput').value,
+    week: $('#learningWeekInput').value.trim(),
+    duration: $('#learningDurationInput').value.trim(),
+    completed: $('#learningCompletedInput').value.trim(),
+    understood: $('#learningUnderstoodInput').value.trim(),
+    problem: $('#learningProblemInput').value.trim(),
+    solution: $('#learningSolutionInput').value.trim(),
+    englishWords: $('#learningEnglishInput').value.trim(),
+    nextStep: $('#learningNextStepInput').value.trim()
+  };
 }
 
 function setPlanFields(enabled) {
@@ -305,6 +346,21 @@ function detailSection(title, content) {
   return `<section class="detail-section"><h3>${title}</h3><p class="${content ? '' : 'detail-empty'}">${content ? escapeHTML(content) : '尚未填写'}</p></section>`;
 }
 
+function learningDetail(note) {
+  const data = learningData(note);
+  return `<div class="learning-detail-meta">
+    <div><span>日期</span><strong>${escapeHTML(data.date || '未填写')}</strong></div>
+    <div><span>当前周次</span><strong>${escapeHTML(data.week || '未填写')}</strong></div>
+    <div><span>本次用时</span><strong>${escapeHTML(data.duration || '未填写')}</strong></div>
+  </div>
+  ${detailSection('今天完成', data.completed)}
+  ${detailSection('今天理解', data.understood)}
+  ${detailSection('遇到的问题', data.problem)}
+  ${detailSection('解决方法', data.solution)}
+  ${detailSection('相关英文词', data.englishWords)}
+  ${detailSection('下次第一件事', data.nextStep)}`;
+}
+
 function cleanupDetailPhotos() {
   detailPhotoUrls.forEach(URL.revokeObjectURL);
   detailPhotoUrls = [];
@@ -322,11 +378,10 @@ async function openDetail(id) {
   $('#detailCategory').textContent = note.category || '未分类';
   $('#detailTitle').textContent = note.title;
   $('#detailTime').textContent = `更新于 ${formatDetailDate(note.updatedAt)}`;
+  const mainDetails = note.category === '学习' && hasLearningData(note) ? learningDetail(note) : `${detailSection('问题 / 背景', note.problem)}${detailSection('过程 / 思路', note.process)}${detailSection('结果 / 结论', note.result)}`;
   $('#detailContent').innerHTML = `
     <div class="detail-meta"><span>创建于 ${formatDetailDate(note.createdAt)}</span>${note.pinned ? '<span>◆ 已置顶</span>' : ''}</div>
-    ${detailSection('问题 / 背景', note.problem)}
-    ${detailSection('过程 / 思路', note.process)}
-    ${detailSection('结果 / 结论', note.result)}
+    ${mainDetails}
     ${note.nextAction ? `<section class="detail-plan ${isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成' : '下一步计划'}</span><strong>${escapeHTML(learningTaskForToday(note))}</strong><small>${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : ''}
     ${(note.tags || []).length ? `<div class="detail-tags">${note.tags.map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
     ${note.photoCount ? '<section class="detail-photos-section"><h3>图片附件</h3><div id="detailPhotos" class="detail-photos"><span class="detail-photo-loading">正在读取图片…</span></div></section>' : ''}`;
@@ -356,7 +411,7 @@ function render() {
   const visible = state.notes.filter(note => {
     const matchesStatus = state.filter === 'all' || note.status === state.filter;
     const matchesCategory = categoryMatches(note);
-    const haystack = [note.title, note.problem, note.process, note.result, note.category, ...(note.tags || [])].join(' ').toLocaleLowerCase();
+    const haystack = [note.title, note.problem, note.process, note.result, note.category, ...Object.values(learningData(note)), ...(note.tags || [])].join(' ').toLocaleLowerCase();
     return matchesStatus && matchesCategory && (!q || haystack.includes(q));
   }).sort((a,b) => Number(b.pinned) - Number(a.pinned) || new Date(b.updatedAt) - new Date(a.updatedAt));
 
@@ -404,6 +459,16 @@ async function openForm(id = null) {
   $('#problemInput').value = note?.problem || '';
   $('#processInput').value = note?.process || '';
   $('#resultInput').value = note?.result || '';
+  const learning = learningData(note || {});
+  $('#learningDateInput').value = learning.date || localDateKey();
+  $('#learningWeekInput').value = learning.week || currentLearningWeek();
+  $('#learningDurationInput').value = learning.duration || '';
+  $('#learningCompletedInput').value = learning.completed || '';
+  $('#learningUnderstoodInput').value = learning.understood || '';
+  $('#learningProblemInput').value = learning.problem || '';
+  $('#learningSolutionInput').value = learning.solution || '';
+  $('#learningEnglishInput').value = learning.englishWords || '';
+  $('#learningNextStepInput').value = learning.nextStep || '';
   $('#tagsInput').value = (note?.tags || []).join(' ');
   $('#planEnabledInput').checked = Boolean(note?.nextAction);
   $('#nextActionInput').value = note?.nextAction || '';
@@ -413,8 +478,9 @@ async function openForm(id = null) {
   $('#planTimeInput').value = note?.planTime || '';
   $('#actionDoneInput').checked = note ? isPlanDone(note) : false;
   updatePlanCompletionLabel();
+  setLearningTemplate(note?.category || '');
   setPlanFields($('#planEnabledInput').checked);
-  const hasDetails = Boolean(note && (note.problem || note.process || note.result || note.tags?.length || note.photoCount || note.nextAction));
+  const hasDetails = Boolean(note && (note.problem || note.process || note.result || hasLearningData(note) || note.tags?.length || note.photoCount || note.nextAction));
   setFormDetails(hasDetails);
   $('#deleteBtn').hidden = !note;
   $('#noteDialog').showModal();
@@ -427,6 +493,16 @@ async function openForm(id = null) {
       $('#problemInput').value = draft.problem || '';
       $('#processInput').value = draft.process || '';
       $('#resultInput').value = draft.result || '';
+      const draftLearning = draft.learningData || {};
+      $('#learningDateInput').value = draftLearning.date || $('#learningDateInput').value;
+      $('#learningWeekInput').value = draftLearning.week || $('#learningWeekInput').value;
+      $('#learningDurationInput').value = draftLearning.duration || '';
+      $('#learningCompletedInput').value = draftLearning.completed || '';
+      $('#learningUnderstoodInput').value = draftLearning.understood || '';
+      $('#learningProblemInput').value = draftLearning.problem || '';
+      $('#learningSolutionInput').value = draftLearning.solution || '';
+      $('#learningEnglishInput').value = draftLearning.englishWords || '';
+      $('#learningNextStepInput').value = draftLearning.nextStep || '';
       $('#tagsInput').value = draft.tags || '';
       $('#planEnabledInput').checked = Boolean(draft.planEnabled);
       $('#nextActionInput').value = draft.nextAction || '';
@@ -436,8 +512,9 @@ async function openForm(id = null) {
       $('#planTimeInput').value = draft.planTime || '';
       $('#actionDoneInput').checked = Boolean(draft.actionDone);
       updatePlanCompletionLabel();
+      setLearningTemplate($('#categoryInput').value);
       setPlanFields($('#planEnabledInput').checked);
-      if (draft.problem || draft.process || draft.result || draft.tags || draft.planEnabled) setFormDetails(true);
+      if (draft.problem || draft.process || draft.result || Object.values(draftLearning).some(Boolean) || draft.tags || draft.planEnabled) setFormDetails(true);
       toast('已恢复上次未保存的草稿');
     }
   } catch { /* 无效草稿直接忽略。 */ }
@@ -469,6 +546,7 @@ function saveFormDraft() {
     problem: $('#problemInput').value,
     process: $('#processInput').value,
     result: $('#resultInput').value,
+    learningData: readLearningForm(),
     tags: $('#tagsInput').value,
     planEnabled: $('#planEnabledInput').checked,
     nextAction: $('#nextActionInput').value,
@@ -485,7 +563,7 @@ async function saveQuickNote() {
   const title = $('#quickInput').value.trim();
   if (!title) { $('#quickInput').focus(); toast('先写一句要记录的内容'); return; }
   const now = new Date().toISOString();
-  const note = { id:uid(), title, category:autoCategory(title), status:'open', problem:'', process:'', result:'', tags:[], photoCount:0, pinned:false, nextAction:'', actionPeriod:'week', dueDate:'', actionDone:false, recurrence:'', planTime:'', lastCompletedDate:'', createdAt:now, updatedAt:now };
+  const note = { id:uid(), title, category:autoCategory(title), status:'open', problem:'', process:'', result:'', learningData:{}, tags:[], photoCount:0, pinned:false, nextAction:'', actionPeriod:'week', dueDate:'', actionDone:false, recurrence:'', planTime:'', lastCompletedDate:'', createdAt:now, updatedAt:now };
   state.notes.unshift(note);
   $('#quickInput').value = '';
   save(); render(); toast(`已快速记录，并归入“${note.category}”`);
@@ -566,14 +644,16 @@ $('#noteForm').addEventListener('submit', async event => {
   event.preventDefault();
   const title = $('#titleInput').value.trim(); if (!title) { $('#titleInput').focus(); return; }
   const now = new Date().toISOString(); const old = state.notes.find(n => n.id === state.editingId);
+  const category = $('#categoryInput').value.trim() || autoCategory(title);
+  const structuredLearning = category === '学习' ? readLearningForm() : learningData(old || {});
   const planEnabled = $('#planEnabledInput').checked;
-  const nextAction = planEnabled ? ($('#nextActionInput').value.trim() || `继续处理：${title}`) : '';
+  const nextAction = planEnabled ? ($('#nextActionInput').value.trim() || structuredLearning.nextStep || `继续处理：${title}`) : '';
   const recurrence = planEnabled ? $('#recurrenceInput').value : '';
   const checked = planEnabled && $('#actionDoneInput').checked;
   let lastCompletedDate = old?.lastCompletedDate || '';
   if (recurrence && checked) lastCompletedDate = localDateKey();
   else if (recurrence && !checked && lastCompletedDate === localDateKey()) lastCompletedDate = '';
-  const note = { id: old?.id || uid(), title, category: $('#categoryInput').value.trim() || autoCategory(title), status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, nextAction, actionPeriod:planEnabled ? $('#actionPeriodInput').value : 'week', dueDate:planEnabled ? $('#dueDateInput').value : '', actionDone:planEnabled && !recurrence && checked, recurrence, planTime:planEnabled ? $('#planTimeInput').value : '', lastCompletedDate:planEnabled ? lastCompletedDate : '', createdAt: old?.createdAt || now, updatedAt: now };
+  const note = { id: old?.id || uid(), title, category, status: $('#statusInput').value, problem: $('#problemInput').value.trim(), process: $('#processInput').value.trim(), result: $('#resultInput').value.trim(), learningData:structuredLearning, tags: parseTags($('#tagsInput').value), photoCount: photoDraft.length, pinned: old?.pinned || false, nextAction, actionPeriod:planEnabled ? $('#actionPeriodInput').value : 'week', dueDate:planEnabled ? $('#dueDateInput').value : '', actionDone:planEnabled && !recurrence && checked, recurrence, planTime:planEnabled ? $('#planTimeInput').value : '', lastCompletedDate:planEnabled ? lastCompletedDate : '', createdAt: old?.createdAt || now, updatedAt: now };
   const submitButton = $('#noteForm button[type="submit"]');
   submitButton.disabled = true;
   submitButton.textContent = '正在保存…';
@@ -638,6 +718,10 @@ $('#detailEditBtn').addEventListener('click', () => {
   if (id) openForm(id);
 });
 $('#formMoreBtn').addEventListener('click', () => setFormDetails($('#formDetails').hidden));
+$('#categoryInput').addEventListener('input', event => {
+  setLearningTemplate(event.target.value);
+  if (event.target.value.trim() === '学习') setFormDetails(true);
+});
 $('#planEnabledInput').addEventListener('change', event => { setPlanFields(event.target.checked); if (event.target.checked) $('#nextActionInput').focus(); });
 $('#recurrenceInput').addEventListener('change', updatePlanCompletionLabel);
 let draftSaveTimer;
@@ -647,7 +731,7 @@ $('#quickInput').addEventListener('keydown', event => { if (event.key === 'Enter
 $('#quickCameraBtn').addEventListener('click', async () => {
   const quickTitle = $('#quickInput').value.trim();
   await openForm();
-  if (quickTitle) { $('#titleInput').value = quickTitle; $('#categoryInput').value = autoCategory(quickTitle); $('#quickInput').value = ''; }
+  if (quickTitle) { $('#titleInput').value = quickTitle; $('#categoryInput').value = autoCategory(quickTitle); setLearningTemplate($('#categoryInput').value); $('#quickInput').value = ''; }
   setFormDetails(true);
   setTimeout(() => $('#cameraInput').click(), 80);
 });

@@ -124,9 +124,25 @@
         </div>
         <button id="formMoreBtn" class="form-more-btn" type="button" aria-expanded="false">＋ 补充问题、过程、结果和计划</button>
         <div id="formDetails" class="form-details" hidden>
-        <label class="field full"><span class="field-label"><span>问题 / 背景</span><button class="voice-btn" type="button" data-voice-target="problemInput" aria-label="语音输入问题和背景" title="语音输入">🎙 <span>语音</span></button></span><textarea id="problemInput" rows="4" placeholder="遇到了什么？当时的背景是什么？"></textarea></label>
-        <label class="field full"><span class="field-label"><span>过程 / 思路</span><button class="voice-btn" type="button" data-voice-target="processInput" aria-label="语音输入过程和思路" title="语音输入">🎙 <span>语音</span></button></span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
-        <label class="field full"><span class="field-label"><span>结果 / 结论</span><button class="voice-btn" type="button" data-voice-target="resultInput" aria-label="语音输入结果和结论" title="语音输入">🎙 <span>语音</span></button></span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
+        <div id="standardNoteFields" class="form-details-block">
+          <label class="field full"><span class="field-label"><span>问题 / 背景</span><button class="voice-btn" type="button" data-voice-target="problemInput" aria-label="语音输入问题和背景" title="语音输入">🎙 <span>语音</span></button></span><textarea id="problemInput" rows="4" placeholder="遇到了什么？当时的背景是什么？"></textarea></label>
+          <label class="field full"><span class="field-label"><span>过程 / 思路</span><button class="voice-btn" type="button" data-voice-target="processInput" aria-label="语音输入过程和思路" title="语音输入">🎙 <span>语音</span></button></span><textarea id="processInput" rows="5" placeholder="尝试了什么？有哪些关键发现？"></textarea></label>
+          <label class="field full"><span class="field-label"><span>结果 / 结论</span><button class="voice-btn" type="button" data-voice-target="resultInput" aria-label="语音输入结果和结论" title="语音输入">🎙 <span>语音</span></button></span><textarea id="resultInput" rows="4" placeholder="最终如何解决？下次可以怎样做？"></textarea></label>
+        </div>
+        <section id="learningNoteFields" class="learning-fields" aria-labelledby="learningTemplateTitle" hidden>
+          <div class="learning-template-head"><span>学习记录模板</span><strong id="learningTemplateTitle">把今天学到的内容留下来</strong></div>
+          <div class="learning-meta-row">
+            <label class="field"><span>日期</span><input id="learningDateInput" type="date"></label>
+            <label class="field"><span>当前周次</span><input id="learningWeekInput" maxlength="30" placeholder="例如：第1周"></label>
+            <label class="field"><span>本次用时</span><input id="learningDurationInput" maxlength="30" placeholder="例如：90分钟"></label>
+          </div>
+          <label class="field full"><span class="field-label"><span>今天完成</span><button class="voice-btn" type="button" data-voice-target="learningCompletedInput" aria-label="语音输入今天完成的内容" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningCompletedInput" rows="3" placeholder="今天具体完成了什么？"></textarea></label>
+          <label class="field full"><span class="field-label"><span>今天理解</span><button class="voice-btn" type="button" data-voice-target="learningUnderstoodInput" aria-label="语音输入今天理解的内容" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningUnderstoodInput" rows="3" placeholder="今天真正弄明白了什么？"></textarea></label>
+          <label class="field full"><span class="field-label"><span>遇到的问题</span><button class="voice-btn" type="button" data-voice-target="learningProblemInput" aria-label="语音输入遇到的问题" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningProblemInput" rows="3" placeholder="哪里卡住了？"></textarea></label>
+          <label class="field full"><span class="field-label"><span>解决方法</span><button class="voice-btn" type="button" data-voice-target="learningSolutionInput" aria-label="语音输入解决方法" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningSolutionInput" rows="3" placeholder="怎样解决的？还没解决也可以写准备怎么试。"></textarea></label>
+          <label class="field full"><span class="field-label"><span>相关英文词</span><button class="voice-btn" type="button" data-voice-target="learningEnglishInput" aria-label="语音输入相关英文词" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningEnglishInput" rows="2" placeholder="例如：Transform、Hierarchy、Attachment"></textarea></label>
+          <label class="field full"><span class="field-label"><span>下次第一件事</span><button class="voice-btn" type="button" data-voice-target="learningNextStepInput" aria-label="语音输入下次第一件事" title="语音输入">🎙 <span>语音</span></button></span><textarea id="learningNextStepInput" rows="2" placeholder="下次打开软件后首先做什么？"></textarea></label>
+        </section>
         <label class="field full"><span>标签 <small>用空格或逗号分隔</small></span><input id="tagsInput" maxlength="100" placeholder="例如：Unity  性能优化"></label>
         <section class="photo-field" aria-labelledby="photoLabel">
           <div class="photo-head">

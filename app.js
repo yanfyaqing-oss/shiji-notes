@@ -51,6 +51,7 @@ function currentLearningWeek(date = new Date()) {
   return `第${week}周`;
 }
 function isRecurringPlan(note) { return Boolean(note.recurrence); }
+function isBuiltInLearningPlan(note) { return ['learning-plan-u3d','learning-plan-spine'].includes(note.id); }
 function isPlanScheduledToday(note, date = new Date()) {
   const day = date.getDay();
   const dateKey = localDateKey(date);
@@ -67,7 +68,7 @@ function recurrenceLabel(note) {
 }
 function learningTaskForToday(note, date = new Date()) {
   const plan = window.SHIJI_LEARNING_PLAN;
-  if (!plan || !['learning-plan-u3d','learning-plan-spine'].includes(note.id)) return note.nextAction;
+  if (!plan || !isBuiltInLearningPlan(note)) return note.nextAction;
   const start = new Date(`${plan.start}T00:00:00`); const today = new Date(date); today.setHours(0,0,0,0);
   const weekNumber = Math.floor((today - start) / 604800000) + 1;
   if (weekNumber < 1) {
@@ -361,6 +362,24 @@ function learningDetail(note) {
   ${detailSection('下次第一件事', data.nextStep)}`;
 }
 
+function fullLearningPlanDetail(note, date = new Date()) {
+  const plan = window.SHIJI_LEARNING_PLAN;
+  if (!plan || !isBuiltInLearningPlan(note)) return '';
+  const u3d = note.id === 'learning-plan-u3d';
+  const wantedDays = u3d ? ['周二','周四'] : ['周六','周日'];
+  const start = new Date(`${plan.start}T00:00:00`); const current = new Date(date); current.setHours(0,0,0,0);
+  const rawWeek = Math.floor((current - start) / 604800000) + 1;
+  const openWeek = Math.min(plan.weeks.length, Math.max(1, rawWeek));
+  const schedule = u3d ? '每周二、周四 12:00–13:30 · 每周共3小时' : '每周六、周日 20:30开始';
+  return `<section class="full-learning-plan" aria-labelledby="fullPlanTitle">
+    <header class="full-plan-head"><div><span>完整路线</span><h3 id="fullPlanTitle">${u3d ? 'U3D' : 'Spine'} 40周全部计划</h3><p>${schedule}</p></div><button class="full-plan-toggle" type="button" data-expanded="false">展开全部40周</button></header>
+    <div class="full-plan-weeks">${plan.weeks.map(week => {
+      const tasks = week.tasks.filter(task => wantedDays.some(day => task.date.includes(day)));
+      return `<details class="full-plan-week" ${week.week === openWeek ? 'open' : ''}><summary><strong>第${week.week}周</strong><span>${escapeHTML(week.range)}</span><small>${tasks.length}次训练</small></summary><ol>${tasks.map(task => `<li><time>${escapeHTML(task.date)}</time><p>${escapeHTML(task.task)}</p></li>`).join('')}</ol></details>`;
+    }).join('')}</div>
+  </section>`;
+}
+
 function cleanupDetailPhotos() {
   detailPhotoUrls.forEach(URL.revokeObjectURL);
   detailPhotoUrls = [];
@@ -379,10 +398,11 @@ async function openDetail(id) {
   $('#detailTitle').textContent = note.title;
   $('#detailTime').textContent = `更新于 ${formatDetailDate(note.updatedAt)}`;
   const mainDetails = note.category === '学习' && hasLearningData(note) ? learningDetail(note) : `${detailSection('问题 / 背景', note.problem)}${detailSection('过程 / 思路', note.process)}${detailSection('结果 / 结论', note.result)}`;
+  const currentPlan = note.nextAction ? `<section class="detail-plan ${isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成' : '今天的安排'}</span><strong>${escapeHTML(learningTaskForToday(note))}</strong><small>${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : '';
+  const fullPlan = fullLearningPlanDetail(note);
   $('#detailContent').innerHTML = `
     <div class="detail-meta"><span>创建于 ${formatDetailDate(note.createdAt)}</span>${note.pinned ? '<span>◆ 已置顶</span>' : ''}</div>
-    ${mainDetails}
-    ${note.nextAction ? `<section class="detail-plan ${isPlanDone(note) ? 'done' : ''}"><span>${isPlanDone(note) ? '✓ 今天已完成' : '下一步计划'}</span><strong>${escapeHTML(learningTaskForToday(note))}</strong><small>${recurrenceLabel(note)}${note.planTime ? ` · ${escapeHTML(note.planTime)}` : ''}${note.dueDate ? ` · ${new Date(`${note.dueDate}T00:00:00`).toLocaleDateString('zh-CN')}` : ''}</small></section>` : ''}
+    ${isBuiltInLearningPlan(note) ? `${currentPlan}${fullPlan}${mainDetails}` : `${mainDetails}${currentPlan}`}
     ${(note.tags || []).length ? `<div class="detail-tags">${note.tags.map(tag => `<span class="tag"># ${escapeHTML(tag)}</span>`).join('')}</div>` : ''}
     ${note.photoCount ? '<section class="detail-photos-section"><h3>图片附件</h3><div id="detailPhotos" class="detail-photos"><span class="detail-photo-loading">正在读取图片…</span></div></section>' : ''}`;
   $('#detailDialog').showModal();
@@ -707,6 +727,15 @@ $('#detailDoneBtn').addEventListener('click', () => $('#detailDialog').close());
 $('#detailDialog').addEventListener('close', cleanupDetailPhotos);
 $('#detailDialog').addEventListener('click', event => { if (event.target === $('#detailDialog')) $('#detailDialog').close(); });
 $('#detailContent').addEventListener('click', event => {
+  const planToggle = event.target.closest('.full-plan-toggle');
+  if (planToggle) {
+    const weeks = [...$('#detailContent').querySelectorAll('.full-plan-week')];
+    const expand = planToggle.dataset.expanded !== 'true';
+    weeks.forEach(week => { week.open = expand; });
+    planToggle.dataset.expanded = String(expand);
+    planToggle.textContent = expand ? '收起全部周次' : '展开全部40周';
+    return;
+  }
   const button = event.target.closest('.detail-photo-button');
   if (!button) return;
   $('#imageDialogImg').src = button.querySelector('img').src;

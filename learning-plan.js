@@ -110,11 +110,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "8月24日 周一",
-          "task": "查看Canvas与Button任务"
+          "task": "确认Spine编辑器版本，并理解编辑器版本必须与spine-unity Runtime版本对应"
         },
         {
           "date": "8月25日 周二",
-          "task": "Unity：创建Canvas、Image和Button；了解屏幕空间UI"
+          "task": "Unity：通过Package Manager安装与Spine导出版本匹配的spine-unity Runtime"
         },
         {
           "date": "8月26日 周三",
@@ -122,7 +122,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "8月27日 周四",
-          "task": "Unity：设置Button事件；制作显示和隐藏对象的按钮"
+          "task": "Unity：检查Runtime安装结果；认识SkeletonAnimation以及Spine导入所需的.json/.skel、.atlas.txt和.png文件"
         },
         {
           "date": "8月28日 周五",
@@ -130,11 +130,11 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "8月29日 周六",
-          "task": "Spine：完善Run循环，调整手脚相位和身体上下起伏"
+          "task": "Spine：完善Run循环；确认编辑器完整版本号，并检查骨骼、Slot、Attachment命名"
         },
         {
           "date": "8月30日 周日",
-          "task": "Spine：完成Run定稿；录制Idle和Run对比预览"
+          "task": "Spine：完成Run定稿；按当前版本导出一套Unity测试文件（Skeleton、Atlas和PNG）"
         }
       ]
     },
@@ -144,11 +144,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "8月31日 周一",
-          "task": "确认C#学习环境"
+          "task": "准备自己的Spine测试导出文件，并复习Unity资源目录规范"
         },
         {
           "date": "9月1日 周二",
-          "task": "Unity：创建第一个C#脚本；学习变量、类型、方法和`Debug.Log`"
+          "task": "Unity：导入自己的Spine角色；生成并认识SkeletonData Asset、Atlas Asset和材质"
         },
         {
           "date": "9月2日 周三",
@@ -156,7 +156,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月3日 周四",
-          "task": "Unity：学习`Start()`和`Update()`；用脚本持续移动对象"
+          "task": "Unity：创建SkeletonAnimation；从Inspector播放Idle和Run，并处理比例、透明、材质与Sorting问题"
         },
         {
           "date": "9月4日 周五",
@@ -164,7 +164,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月5日 周六",
-          "task": "Spine：分析Attack01的前摇、出手、命中和收招"
+          "task": "Spine：分析Attack01的前摇、出手、命中和收招；保持Root与角色脚底原点规范"
         },
         {
           "date": "9月6日 周日",
@@ -178,11 +178,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "9月7日 周一",
-          "task": "复习变量与方法"
+          "task": "开始只为控制Spine动画服务的最小C#训练"
         },
         {
           "date": "9月8日 周二",
-          "task": "Unity：学习`if/else`和键盘输入"
+          "task": "Unity：创建SpineAnimationController；理解变量、方法、组件引用和`Debug.Log`"
         },
         {
           "date": "9月9日 周三",
@@ -190,7 +190,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月10日 周四",
-          "task": "Unity：用键盘控制普通Sprite左右移动；使用`Time.deltaTime`"
+          "task": "Unity：从Inspector引用SkeletonAnimation；用按键调用SetAnimation切换Idle和Run"
         },
         {
           "date": "9月11日 周五",
@@ -198,7 +198,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月12日 周六",
-          "task": "Spine：补充Attack01中间帧，重点处理挥击速度"
+          "task": "Spine：补充Attack01中间帧，重点处理挥击速度；统一Idle、Run和Attack01的起始基准"
         },
         {
           "date": "9月13日 周日",
@@ -212,11 +212,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "9月14日 周一",
-          "task": "查看Instantiate任务"
+          "task": "查看Spine AnimationState与动画切换任务"
         },
         {
           "date": "9月15日 周二",
-          "task": "Unity：学习GameObject、Transform和Component引用；从Inspector拖入引用"
+          "task": "Unity：学习AnimationState、Track与Loop；用SetAnimation播放Idle、Run和Attack01"
         },
         {
           "date": "9月16日 周三",
@@ -224,7 +224,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月17日 周四",
-          "task": "Unity：学习Instantiate和Destroy；按键生成一个占位特效并自动销毁"
+          "task": "Unity：完成Idle、Run、Attack01三态切换；让攻击结束后返回Idle并避免重复触发"
         },
         {
           "date": "9月18日 周五",
@@ -232,7 +232,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月19日 周六",
-          "task": "Spine：制作Hit受击动作的关键姿势"
+          "task": "Spine：制作Hit受击动作关键姿势；检查Attack01收招能否自然回到Idle"
         },
         {
           "date": "9月20日 周日",
@@ -246,11 +246,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "9月21日 周一",
-          "task": "查看Coroutine任务"
+          "task": "进行第一次Spine到Unity独立接入验收"
         },
         {
           "date": "9月22日 周二",
-          "task": "Unity：学习Coroutine和等待时间；制作简单闪烁"
+          "task": "Unity：不照步骤独立重新导入一次Spine角色；检查版本、三类导出文件和自动生成资源"
         },
         {
           "date": "9月23日 周三",
@@ -258,7 +258,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月24日 周四",
-          "task": "Unity：制作角色受击闪烁和简单技能冷却；整理第一阶段项目"
+          "task": "Unity：把Spine角色制成Prefab；独立完成动画预览、排序、比例和文件替换测试，整理Console问题"
         },
         {
           "date": "9月25日 周五",
@@ -266,7 +266,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "9月26日 周六",
-          "task": "Spine：制作Die死亡动作关键姿势"
+          "task": "Spine：制作Die死亡动作关键姿势；检查Root、挂点和命名是否符合Unity接入规范"
         },
         {
           "date": "9月27日 周日",
@@ -280,11 +280,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "9月28日 周一",
-          "task": "记录Unity和Spine准确版本，备份项目"
+          "task": "复盘Spine导出、版本匹配与Unity导入故障排查"
         },
         {
           "date": "9月29日 周二",
-          "task": "Unity：按照版本对应关系安装Spine Unity Runtime"
+          "task": "Unity：练习识别版本不匹配、Atlas或贴图缺失、材质异常等常见导入问题"
         },
         {
           "date": "9月30日 周三",
@@ -292,7 +292,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "10月1日 周四",
-          "task": "Unity：认识Skeleton数据、Atlas、Texture和SkeletonDataAsset"
+          "task": "Unity：建立Spine导入检查表；核对Skeleton数据、Atlas、Texture、Material和SkeletonData Asset的引用链"
         },
         {
           "date": "10月2日 周五",
@@ -314,11 +314,11 @@ window.SHIJI_LEARNING_PLAN = {
       "tasks": [
         {
           "date": "10月5日 周一",
-          "task": "准备导入个人资源"
+          "task": "完成一次不依赖逐步提示的Spine资源更新与重新导入"
         },
         {
           "date": "10月6日 周二",
-          "task": "Unity：导入Spine角色并创建SkeletonAnimation"
+          "task": "Unity：替换一次Spine导出文件并验证动画、Prefab和场景引用不会丢失"
         },
         {
           "date": "10月7日 周三",
@@ -326,7 +326,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "10月8日 周四",
-          "task": "Unity：解决材质、透明、比例和排序问题；从Inspector切换动画"
+          "task": "Unity：独立修复材质、透明、比例和排序问题；整理可复用的Spine角色Prefab"
         },
         {
           "date": "10月9日 周五",

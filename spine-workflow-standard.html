@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f2ea">
+  <meta name="description" content="Spine角色制作、Unity接入与团队交付规范">
+  <title>Spine角色制作与Unity交付规范 v1.0 · 拾记</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="stylesheet" href="standard.css?v=26">
+  <script>try{const t=localStorage.getItem('shiji-theme');if(t)document.documentElement.dataset.theme=t}catch{}</script>
+</head>
+<body class="standard-body">
+  <main class="standard-shell">
+    <header class="standard-topbar">
+      <a class="standard-back" href="./"><span>←</span>返回拾记</a>
+      <div class="standard-version">Spine → Unity · v1.0</div>
+    </header>
+
+    <section class="standard-hero">
+      <p class="eyebrow">Production Standard</p>
+      <h1>Spine角色制作与<br>Unity交付规范 v1.0</h1>
+      <p>适用于个人练习、团队协作和作品集项目。进入公司项目后，以项目组已有规范为最高优先级；没有既定规范时，使用本页作为默认标准。</p>
+    </section>
+
+    <section class="standard-summary" aria-label="规范摘要">
+      <article><strong>一套命名</strong><p>小写英文、下划线、两位编号；左右以角色自身为准。</p></article>
+      <article><strong>一个角色工程</strong><p>同一Skeleton包含idle、run、attack、hit和die等全部动画。</p></article>
+      <article><strong>一条稳定交付链</strong><p>源工程可带版本号，Unity导出文件名长期保持稳定。</p></article>
+    </section>
+
+    <section class="standard-card">
+      <h2>六条必须遵守的规则</h2>
+      <div class="standard-rule">
+        <div><b>01 · 命名</b>全部使用小写英文和下划线，不用中文、空格和临时名。</div>
+        <div><b>02 · 角色</b>一个角色、一套SkeletonData、多个Animation，不按动作拆工程。</div>
+        <div><b>03 · 原点</b><code>root</code>位于脚底基准，普通idle、run、attack默认原地制作。</div>
+        <div><b>04 · 引用</b>动画、事件、挂点接入Unity后，不得无通知改名或删除。</div>
+        <div><b>05 · 导出</b>Unity文件名保持稳定，更新时覆盖同名文件并保留<code>.meta</code>。</div>
+        <div><b>06 · 交付</b>每次说明Spine版本、改动内容、事件、挂点和破坏性修改。</div>
+      </div>
+    </section>
+
+    <details class="standard-section" open>
+      <summary><strong>01 · 通用命名规则</strong></summary>
+      <div class="standard-content">
+        <p>统一使用 <code>lower_snake_case</code>。编号使用两位数；左右以角色自身方向为准。</p>
+        <div class="standard-table-wrap"><table class="standard-table">
+          <thead><tr><th>类别</th><th>推荐</th><th>避免</th></tr></thead>
+          <tbody>
+            <tr><td>骨骼</td><td><code>upper_arm_l</code>、<code>hair_back_02</code></td><td>Bone01、左手、NewBone</td></tr>
+            <tr><td>动画</td><td><code>idle</code>、<code>attack_01</code></td><td>Attack1最终版、idle 新</td></tr>
+            <tr><td>事件</td><td><code>evt_hit</code>、<code>evt_footstep_l</code></td><td>event1、这里出特效</td></tr>
+            <tr><td>挂点</td><td><code>socket_weapon</code>、<code>socket_hit</code></td><td>point1、武器点</td></tr>
+          </tbody>
+        </table></div>
+        <pre>_l = 角色左侧
+_r = 角色右侧
+01 / 02 / 03 = 统一两位编号</pre>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>02 · 工程、版本与目录</strong></summary>
+      <div class="standard-content">
+        <pre>hero/
+├─ spine/      hero_v001.spine
+├─ images/     body / face / hair / clothes / weapon
+├─ export/     hero.json / hero.atlas.txt / hero.png
+├─ preview/    idle与攻击预览
+└─ notes/      hero_changelog.txt</pre>
+        <p>源工程可以递增版本：<code>hero_v001.spine</code>、<code>hero_v002.spine</code>。Unity导出名始终保持<code>hero</code>，不要使用<code>hero_final_2</code>。</p>
+        <p class="standard-note">更新Unity资源时覆盖json、atlas.txt和png三个同名文件，不删除Unity生成的.meta、Atlas Asset、Material和SkeletonData Asset。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>03 · Skeleton与Bone</strong></summary>
+      <div class="standard-content">
+        <h3>推荐基础结构</h3>
+        <pre>root
+└─ pelvis
+   ├─ spine_01 → spine_02 → neck → head
+   ├─ upper_arm_l → forearm_l → hand_l
+   ├─ upper_arm_r → forearm_r → hand_r
+   ├─ thigh_l → shin_l → foot_l
+   └─ thigh_r → shin_r → foot_r</pre>
+        <h3>Root基准</h3>
+        <pre>root position = 0, 0
+root rotation = 0
+root scale = 1, 1
+脚底基准 = Y 0</pre>
+        <p>呼吸、摆动等局部变化不要直接用root完成。默认制作原地动画，角色在游戏世界中的位移交给Unity控制。</p>
+        <h3>软性部件</h3>
+        <p><code>hair_front_01</code>、<code>hair_back_02</code>、<code>coat_l_01</code>、<code>skirt_back_01</code>。规则为“部位 + 方向 + 顺序”。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>04 · Slot、Attachment与Skin</strong></summary>
+      <div class="standard-content">
+        <h3>Slot</h3>
+        <p><code>slot_head</code>、<code>slot_eye_l_pupil</code>、<code>slot_torso</code>、<code>slot_weapon</code>。名称描述容器用途和绘制层级。</p>
+        <h3>Attachment与图片</h3>
+        <p><code>head</code>、<code>upper_arm_l</code>、<code>hair_front_01</code>、<code>weapon_sword_01</code>。图片文件名尽量与Attachment一致。</p>
+        <h3>Skin</h3>
+        <p><code>default</code>、<code>outfit_casual_01</code>、<code>outfit_armor_01</code>、<code>weapon_sword_01</code>。需要自由组合时，按body、hair、outfit和weapon分类。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>05 · 挂点、事件与约束</strong></summary>
+      <div class="standard-content">
+        <h3>Unity挂点</h3>
+        <pre>socket_weapon      武器与刀光
+socket_hit         命中特效
+socket_projectile  弹道起点
+socket_body        护盾与身体特效
+socket_foot_l/r    脚步灰尘</pre>
+        <h3>Spine Event</h3>
+        <pre>evt_hit
+evt_slash_start / evt_slash_end
+evt_footstep_l / evt_footstep_r
+evt_projectile
+evt_skill_release
+evt_camera_shake</pre>
+        <p>事件应放在画面真实发生的时刻。命中、发射和脚步时机由动画师给出，不能让程序凭感觉猜。</p>
+        <h3>约束</h3>
+        <p><code>ik_leg_l</code>、<code>ik_arm_r</code>、<code>tc_weapon</code>、<code>path_hair_01</code>。只在确实提升稳定性和效率时使用。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>06 · 动画命名与制作</strong></summary>
+      <div class="standard-content">
+        <pre>idle / walk / run
+jump_start / jump_loop / jump_end
+attack_01 / attack_02 / attack_heavy
+hit_front / hit_back / hit_air
+die / revive
+skill_01 / skill_02 / ultimate</pre>
+        <ul>
+          <li>没有项目要求时使用30 FPS，项目确定后不要随意改变。</li>
+          <li>只给实际变化的骨骼和属性打关键帧，不给每个动画的全身无差别打Key。</li>
+          <li>循环动画检查首尾、重心、脚滑、头发和衣物断点。</li>
+          <li>攻击拆成前摇、出手、命中、收招，并确保可返回idle或衔接下一段。</li>
+          <li>分别以0.5、1、2倍速度检查节奏和穿帮。</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>07 · 拆图、Mesh与权重</strong></summary>
+      <div class="standard-content">
+        <ul>
+          <li>关节处保留足够覆盖，极限旋转时不能露出空洞。</li>
+          <li>绑定前测试抬臂、交叉、最大迈步、弯腰和转头等极限姿势。</li>
+          <li>脸、躯干、裙摆、披风和头发可使用Mesh；武器、护甲片等刚体不做无意义高密网格。</li>
+          <li>顶点只加在需要变形的位置，单顶点尽量由2～4根骨骼影响。</li>
+          <li>检查权重过渡、轮廓塌陷、拉裂、穿帮和无效顶点。</li>
+        </ul>
+        <p class="standard-note">够用的最少顶点，比无意义的高密度网格更专业，也更利于移动端性能。</p>
+      </div>
+    </details>
+
+    <details class="standard-section" open>
+      <summary><strong>08 · Unity导出与透明规范</strong></summary>
+      <div class="standard-content">
+        <h3>当前项目：Straight Alpha</h3>
+        <pre>JSON / Spine 4.2
+非必要数据：关闭
+动画清理：开启
+警告：开启
+预乘Alpha：关闭
+Bleed/溢出：开启
+Linear / Linear
+ClampToEdge
+RGBA8888
+能被4整除：开启
+最大尺寸：2048 × 2048
+扩展名：.atlas.txt</pre>
+        <h3>Unity贴图与材质</h3>
+        <pre>Texture Type = Default
+Alpha Source = Input Texture Alpha
+Alpha Is Transparency = On
+Generate Mip Maps = Off
+Wrap Mode = Clamp
+Filter Mode = Bilinear
+Compression = None
+
+Material:
+Straight Alpha Texture = On</pre>
+        <p>记忆：<strong>Spine不预乘，Unity两个都勾；Spine预乘，Unity两个都不勾。</strong></p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>09 · Unity资源与替换流程</strong></summary>
+      <div class="standard-content">
+        <pre>Assets/SpineAssets/Characters/
+├─ Xiaoren_Test/  xiaoren三件套
+└─ Hero/          hero三件套</pre>
+        <p>同一角色更新动作或贴图：覆盖三件套，保留meta和生成资源。完全不同的正式角色：新建目录、新生成SkeletonData和Prefab，不直接覆盖测试骨架。</p>
+        <pre>PlayerRoot
+├─ 移动、碰撞、状态脚本
+└─ Visual
+   └─ SkeletonAnimation</pre>
+        <p>正式项目把游戏逻辑与视觉对象分开，更换角色时只替换Visual。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>10 · 动画与交付验收</strong></summary>
+      <div class="standard-content">
+        <ul class="standard-checklist">
+          <li>动作轮廓一眼可读，武器方向清楚</li>
+          <li>支撑脚与重心合理，没有漂浮</li>
+          <li>关键动作有快慢、停顿和命中感</li>
+          <li>网格、权重、衣物和关节无穿帮</li>
+          <li>循环首尾连续，Run没有脚滑</li>
+          <li>攻击可返回Idle或衔接下一段</li>
+          <li>动画、Event和socket名称正确</li>
+          <li>Atlas、透明边缘和材质正常</li>
+          <li>Unity中0.5/1/2倍速测试通过</li>
+          <li>Console保持0 Error</li>
+        </ul>
+        <h3>交付说明模板</h3>
+        <pre>角色：hero
+Spine：4.2.43
+日期：YYYY-MM-DD
+
+新增：run、attack_01
+修改：idle头发摆动、hand_r权重
+事件：attack_01新增evt_hit
+挂点：新增socket_weapon
+注意：已重新打包Atlas，需覆盖三件套</pre>
+        <p>改骨骼名、动画名、Slot、Event或挂点属于破坏性修改，必须主动说明。</p>
+      </div>
+    </details>
+
+    <details class="standard-section">
+      <summary><strong>11 · 禁止事项与当前执行</strong></summary>
+      <div class="standard-content">
+        <ul>
+          <li>不用中文、空格、Bone01、Slot01和“最终版2”等命名。</li>
+          <li>不为每个动作建立一个独立Spine角色工程。</li>
+          <li>不让普通Run的root持续向前移动。</li>
+          <li>不为所有骨骼无差别打关键帧。</li>
+          <li>不混用PMA与Straight Alpha设置。</li>
+          <li>不只交付JSON而遗漏Atlas或PNG。</li>
+        </ul>
+        <p>当前<code>xiaoren</code>是已有测试素材，原有B_等旧命名不用强行重做。从新增内容开始使用：</p>
+        <pre>动画：idle / run / attack_01 / hit_front / die
+事件：evt_hit / evt_footstep_l / evt_footstep_r
+挂点：socket_weapon / socket_hit / socket_body</pre>
+      </div>
+    </details>
+
+    <footer class="standard-footer">拾记 · Spine角色制作与Unity交付规范 v1.0</footer>
+  </main>
+</body>
+</html>

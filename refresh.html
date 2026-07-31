@@ -23,7 +23,7 @@
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.filter(item => item.scope.includes('/shiji-notes/')).map(item => item.unregister()));
         }
-        location.replace(`./?v=25&refreshed=${Date.now()}`);
+        location.replace(`./?v=26&refreshed=${Date.now()}`);
       } catch {
         document.getElementById('message').textContent = '自动更新没有完成，请点下面的按钮重新打开。';
         document.getElementById('retry').style.display = 'block';

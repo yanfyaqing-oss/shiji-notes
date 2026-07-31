@@ -46,7 +46,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "8月11日 周二",
-          "task": "Unity：导入Sprite；认识Sprite Renderer、Pixels Per Unit和Pivot"
+          "task": "第5课：Unity资源导入与项目规范；导入Sprite，学习Sprite Renderer、Pixels Per Unit、Pivot、Filter Mode和Compression"
         },
         {
           "date": "8月12日 周三",
@@ -88,7 +88,7 @@ window.SHIJI_LEARNING_PLAN = {
         },
         {
           "date": "8月20日 周四",
-          "task": "Unity：修改Prefab和实例；建立Art、Scenes、Scripts、Prefabs文件夹"
+          "task": "完成Prefab课程收尾：补齐Art、Scenes、Scripts、Prefabs文件夹，并检查Prefab Asset、Instance、Override、Revert和Apply"
         },
         {
           "date": "8月21日 周五",
@@ -1364,4 +1364,3 @@ window.SHIJI_LEARNING_PLAN = {
     }
   ]
 };
-

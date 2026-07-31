@@ -91,6 +91,20 @@ function ensureBuiltInLearningPlans() {
     state.notes.push(note);
     repaired.push(note);
   }
+  const u3d = state.notes.find(note => note.id === 'learning-plan-u3d');
+  const courseProgressMarker = 'progress-2026-07-31-course-4';
+  if (u3d && !completedTaskKeys(u3d).includes(courseProgressMarker)) {
+    u3d.completedTasks = [...new Set([
+      ...completedTaskKeys(u3d),
+      'u3d-w1-t1',
+      'u3d-w1-t2',
+      'u3d-w2-t2',
+      'u3d-w3-t1',
+      courseProgressMarker
+    ])];
+    u3d.updatedAt = now;
+    if (!repaired.includes(u3d)) repaired.push(u3d);
+  }
   if (repaired.length) save();
   return repaired;
 }
@@ -503,11 +517,12 @@ function fullLearningPlanDetail(note, date = new Date()) {
   const rawWeek = Math.floor((current - start) / 604800000) + 1;
   const openWeek = Math.min(plan.weeks.length, Math.max(1, rawWeek));
   const schedule = u3d ? '每周二、周四 12:00–13:30 · 每周共3小时' : '每周六、周日 20:30开始';
+  const method = u3d ? '按课程成果推进，日期仅作参考 · 工作目标 → 引导练习 → 独立任务 → 故障练习 → 验收' : '按两周闭环推进：制作动作 → 导入Unity测试 → 返回Spine调整';
   const completed = completedTaskKeys(note);
   const completedCount = completed.filter(key => key.startsWith(u3d ? 'u3d-' : 'spine-')).length;
   const dayOffsets = { '周一':0, '周二':1, '周三':2, '周四':3, '周五':4, '周六':5, '周日':6 };
   return `<section class="full-learning-plan" aria-labelledby="fullPlanTitle">
-    <header class="full-plan-head"><div><span>完整路线 · 已完成 ${completedCount}/80</span><h3 id="fullPlanTitle">${u3d ? 'U3D' : 'Spine'} 40周全部计划</h3><p>${schedule} · 可以勾选未来任务作为提前完成</p></div><button class="full-plan-toggle" type="button" data-expanded="false">展开全部40周</button></header>
+    <header class="full-plan-head"><div><span>完整路线 · 已完成 ${completedCount}/80</span><h3 id="fullPlanTitle">${u3d ? 'U3D' : 'Spine'} 40周成果路线</h3><p>${schedule} · ${method} · 可以勾选未来任务作为提前完成</p></div><button class="full-plan-toggle" type="button" data-expanded="false">展开全部40周</button></header>
     <div class="full-plan-weeks">${plan.weeks.map(week => {
       const tasks = week.tasks.filter(task => wantedDays.some(day => task.date.includes(day)));
       const weekDone = tasks.filter((task, index) => completed.includes(planTaskKey(note, week.week, index))).length;
@@ -1039,7 +1054,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=23').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=24').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

@@ -293,6 +293,18 @@ function weeklySummaryDescription(notes, groups, solved, photos) {
   return `${lead}${topicText}${progressText}${photoText}`;
 }
 
+function weeklySummaryReflection(notes, groups, solved) {
+  const categoryKeys = groups.filter(group => notes.some(note => weeklyGroup(note) === group.key)).map(group => group.key);
+  const allSolved = solved === notes.length;
+  const topicText = notes.map(note => `${note.title || ''} ${note.result || ''} ${note.process || ''}`).join(' ').toLocaleLowerCase();
+  const isUnityLearning = categoryKeys.length === 1 && categoryKeys[0] === 'learning' && /unity|spine|prefab|场景/.test(topicText);
+  if (isUnityLearning && allSolved) return `这周从 Spine 与图片导入，一路推进到 Prefab 和场景基础，学习路径是连贯的；${notes.length} 条都完成，说明你不只是在看教程，也在把内容落到具体操作上。下周可以挑一个小场景，把这些步骤完整串一次。`;
+  if (categoryKeys.length === 1 && categoryKeys[0] === 'learning') return allSolved ? `这周的学习记录都完成了，节奏很稳定。下周可以挑一个主题做小练习，把零散知识串成自己的操作流程。` : `这周已经留下了清晰的学习线索；未完成的内容不必急着扩展，先挑一条继续做完，会更容易形成完整的理解。`;
+  if (allSolved) return `这周的记录都已经收束完成，说明你的推进节奏很扎实。下周不必铺得太开，选一件最重要的事继续深入就好。`;
+  if (solved) return `这周已经推进并完成了一部分事项，剩下的内容可以按重要性收拢。下周先完成最关键的一条，会比新增更多计划更有价值。`;
+  return `这周已经有了可回看的线索。下周先从其中最重要的一条开始推进，让记录慢慢变成真正的成果。`;
+}
+
 function openWeeklySummary() {
   const weekStart = startOfPreviousWeek();
   const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(nextWeekStart.getDate() + 7);
@@ -310,11 +322,12 @@ function openWeeklySummary() {
   const pending = notes.filter(note => note.nextAction && ((!isRecurringPlan(note) && !note.actionDone) || (isRecurringPlan(note) && isPlanScheduledToday(note) && !isPlanDone(note)))).slice(0, 3);
   const rangeEnd = new Date(weekStart); rangeEnd.setDate(rangeEnd.getDate() + 6);
   const summaryDescription = notes.length ? weeklySummaryDescription(notes, groups, solved, photos) : '';
+  const summaryReflection = notes.length ? weeklySummaryReflection(notes, groups, solved) : '';
 
   $('#summaryContent').innerHTML = `
     <div class="summary-range">${weekStart.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})} — ${rangeEnd.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})}</div>
     <div class="summary-stats"><div><strong>${notes.length}</strong><span>条记录</span></div><div><strong>${solved}</strong><span>项完成</span></div><div><strong>${photos}</strong><span>张图片</span></div></div>
-    ${notes.length ? `<section class="summary-overview"><h3>这一周，你做了什么</h3><p>${escapeHTML(summaryDescription)}</p></section>${groups.map(group => {
+    ${notes.length ? `<section class="summary-overview"><h3>这一周，你做了什么</h3><p>${escapeHTML(summaryDescription)}</p><div class="summary-evaluation"><h3>我的观察</h3><p>${escapeHTML(summaryReflection)}</p></div></section>${groups.map(group => {
       const items = notes.filter(note => weeklyGroup(note) === group.key);
       return `<section class="summary-group"><h3><span>${group.icon}</span>${group.title}<small>${items.length}</small></h3>${items.length ? `<div class="summary-list">${items.map(note => `<article><div><strong>${escapeHTML(note.title)}</strong><span class="status-badge ${note.status}">${statusMeta[note.status]?.label || '待解决'}</span></div><p>${escapeHTML(excerpt(note))}</p></article>`).join('')}</div>` : `<p class="summary-empty">${group.empty}</p>`}</section>`;
     }).join('')}` : '<div class="summary-zero"><span>✦</span><h3>本周还没有记录</h3><p>从今天遇到的一个问题开始，周末就会有属于你的回顾。</p></div>'}
@@ -1084,7 +1097,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=29').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=30').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

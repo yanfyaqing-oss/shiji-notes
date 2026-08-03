@@ -269,6 +269,23 @@ function weeklyGroup(note) {
   return 'work';
 }
 
+function joinChinese(items) {
+  if (items.length < 2) return items[0] || '';
+  if (items.length === 2) return items.join('和');
+  return `${items.slice(0, -1).join('、')}和${items.at(-1)}`;
+}
+
+function weeklySummaryDescription(notes, groups, solved, photos) {
+  const categories = groups.filter(group => notes.some(note => weeklyGroup(note) === group.key)).map(group => group.title);
+  const titles = notes.map(note => String(note.title || '').trim()).filter(Boolean).slice(0, 3);
+  const coverage = categories.length ? `，涉及${joinChinese(categories)}` : '';
+  const activities = titles.length ? `你做了${joinChinese(titles.map(title => `「${title}」`))}` : '你为这一周留下了可回看的线索';
+  const remaining = notes.length - titles.length;
+  const extra = remaining > 0 ? `，以及另外 ${remaining} 件事` : '';
+  const outcomes = [solved ? `完成了 ${solved} 项` : '', photos ? `留下了 ${photos} 张图片` : ''].filter(Boolean);
+  return `这一周，你共记录了 ${notes.length} 件事${coverage}。${activities}${extra}。${outcomes.length ? `其中${joinChinese(outcomes)}。` : '这些记录值得在下周继续整理和推进。'}`;
+}
+
 function openWeeklySummary() {
   const weekStart = startOfPreviousWeek();
   const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(nextWeekStart.getDate() + 7);
@@ -285,14 +302,15 @@ function openWeeklySummary() {
   const photos = notes.reduce((sum, note) => sum + (Number(note.photoCount) || 0), 0);
   const pending = notes.filter(note => note.nextAction && ((!isRecurringPlan(note) && !note.actionDone) || (isRecurringPlan(note) && isPlanScheduledToday(note) && !isPlanDone(note)))).slice(0, 3);
   const rangeEnd = new Date(weekStart); rangeEnd.setDate(rangeEnd.getDate() + 6);
+  const summaryDescription = notes.length ? weeklySummaryDescription(notes, groups, solved, photos) : '';
 
   $('#summaryContent').innerHTML = `
     <div class="summary-range">${weekStart.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})} — ${rangeEnd.toLocaleDateString('zh-CN', {month:'long',day:'numeric'})}</div>
     <div class="summary-stats"><div><strong>${notes.length}</strong><span>条记录</span></div><div><strong>${solved}</strong><span>项完成</span></div><div><strong>${photos}</strong><span>张图片</span></div></div>
-    ${notes.length ? groups.map(group => {
+    ${notes.length ? `<section class="summary-overview"><h3>这一周，你做了什么</h3><p>${escapeHTML(summaryDescription)}</p></section>${groups.map(group => {
       const items = notes.filter(note => weeklyGroup(note) === group.key);
       return `<section class="summary-group"><h3><span>${group.icon}</span>${group.title}<small>${items.length}</small></h3>${items.length ? `<div class="summary-list">${items.map(note => `<article><div><strong>${escapeHTML(note.title)}</strong><span class="status-badge ${note.status}">${statusMeta[note.status]?.label || '待解决'}</span></div><p>${escapeHTML(excerpt(note))}</p></article>`).join('')}</div>` : `<p class="summary-empty">${group.empty}</p>`}</section>`;
-    }).join('') : '<div class="summary-zero"><span>✦</span><h3>本周还没有记录</h3><p>从今天遇到的一个问题开始，周末就会有属于你的回顾。</p></div>'}
+    }).join('')}` : '<div class="summary-zero"><span>✦</span><h3>本周还没有记录</h3><p>从今天遇到的一个问题开始，周末就会有属于你的回顾。</p></div>'}
     ${notes.length ? `<section class="summary-next"><h3>下周可以继续</h3>${pending.length ? `<ul>${pending.map(note => `<li>${escapeHTML(note.title)}</li>`).join('')}</ul>` : '<p>本周记录都已解决，可以挑一项最有价值的经验继续巩固。</p>'}</section>` : ''}`;
   $('#settingsDialog').close();
   $('#summaryDialog').showModal();
@@ -1059,7 +1077,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=27').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=28').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

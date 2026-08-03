@@ -275,15 +275,22 @@ function joinChinese(items) {
   return `${items.slice(0, -1).join('、')}和${items.at(-1)}`;
 }
 
+function cleanWeeklyTitle(value) {
+  return String(value || '').replace(/\s*[·•]\s*\d{1,2}月\d{1,2}日\s*$/, '').replace(/\s+/g, ' ').trim();
+}
+
 function weeklySummaryDescription(notes, groups, solved, photos) {
   const categories = groups.filter(group => notes.some(note => weeklyGroup(note) === group.key)).map(group => group.title);
-  const titles = notes.map(note => String(note.title || '').trim()).filter(Boolean).slice(0, 3);
-  const coverage = categories.length ? `，涉及${joinChinese(categories)}` : '';
-  const activities = titles.length ? `你做了${joinChinese(titles.map(title => `「${title}」`))}` : '你为这一周留下了可回看的线索';
-  const remaining = notes.length - titles.length;
-  const extra = remaining > 0 ? `，以及另外 ${remaining} 件事` : '';
-  const outcomes = [solved ? `完成了 ${solved} 项` : '', photos ? `留下了 ${photos} 张图片` : ''].filter(Boolean);
-  return `这一周，你共记录了 ${notes.length} 件事${coverage}。${activities}${extra}。${outcomes.length ? `其中${joinChinese(outcomes)}。` : '这些记录值得在下周继续整理和推进。'}`;
+  const titles = [...new Set(notes.map(note => cleanWeeklyTitle(note.title)).filter(Boolean))];
+  const specificTitles = titles.filter(title => !/^(?:u3d|unity|spine)?\s*学习记录$/i.test(title));
+  const topics = (specificTitles.length ? specificTitles : titles).slice(0, 3);
+  const categoryLabel = categories.length ? joinChinese(categories) : '本周';
+  const allSolved = solved === notes.length;
+  const lead = `本周${allSolved ? '完成了' : '记录了'} ${notes.length} 条${categoryLabel}记录。`;
+  const topicText = topics.length ? `主要内容包括${joinChinese(topics.map(title => `「${title}」`))}${notes.length > topics.length ? '等' : ''}。` : '';
+  const progressText = allSolved ? `这 ${notes.length} 条均已标记为已解决。` : solved ? `其中 ${solved} 条已标记为已解决。` : '';
+  const photoText = photos ? `还留下了 ${photos} 张图片。` : '';
+  return `${lead}${topicText}${progressText}${photoText}`;
 }
 
 function openWeeklySummary() {
@@ -1077,7 +1084,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=28').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=29').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {

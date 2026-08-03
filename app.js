@@ -26,6 +26,7 @@ function formatDate(date) {
   return d.toLocaleDateString('zh-CN', { year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric', month:'short', day:'numeric' });
 }
 function startOfWeek() { const d = new Date(); const day = d.getDay() || 7; d.setHours(0,0,0,0); d.setDate(d.getDate() - day + 1); return d; }
+function startOfPreviousWeek() { const d = startOfWeek(); d.setDate(d.getDate() - 7); return d; }
 function learningData(note) { return note.learningData && typeof note.learningData === 'object' ? note.learningData : {}; }
 function hasLearningData(note) { return Object.values(learningData(note)).some(value => String(value || '').trim()); }
 function excerpt(note) {
@@ -269,8 +270,12 @@ function weeklyGroup(note) {
 }
 
 function openWeeklySummary() {
-  const weekStart = startOfWeek();
-  const notes = state.notes.filter(note => !isBuiltInLearningPlan(note) && new Date(note.updatedAt || note.createdAt) >= weekStart).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  const weekStart = startOfPreviousWeek();
+  const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  const notes = state.notes.filter(note => {
+    const updatedAt = new Date(note.updatedAt || note.createdAt);
+    return !isBuiltInLearningPlan(note) && updatedAt >= weekStart && updatedAt < nextWeekStart;
+  }).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   const groups = [
     { key:'learning', icon:'◌', title:'学习', empty:'这周还没有学习记录' },
     { key:'work', icon:'◇', title:'工作', empty:'这周还没有工作记录' },
@@ -1054,7 +1059,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       location.reload();
     }
   });
-  navigator.serviceWorker.register('./sw.js?v=26').then(registration => {
+  navigator.serviceWorker.register('./sw.js?v=27').then(registration => {
     registration.update();
     setInterval(() => registration.update(), 60 * 60 * 1000);
   }).catch(() => {
